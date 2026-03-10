@@ -5,15 +5,13 @@ import {
   Area,
   ExpiresIn,
   OpenAI,
-  MicrosoftTTS,
   ElevenLabsTTS,
-  AresSTT,
   DeepgramSTT,
-  MicrosoftSTT,
 } from 'agora-agent-server-sdk';
-import type { BaseSTT, BaseTTS } from 'agora-agent-server-sdk';
 import { ClientStartRequest, AgentResponse } from '@/types/conversation';
 
+// System prompt that defines the agent's personality and behavior.
+// Swap this out to change what the agent talks about.
 const ADA_PROMPT = `You are **Ada**, a technical developer advocate and virtual assistant from **Agora**. You help builders deeply understand Agora's **voice-first AI stack** and guide them from idea to execution — whether they're prototyping a demo, designing production workflows, or evaluating alternatives. You don't just provide answers — you **empathize with developers**, ask thoughtful questions, and help them discover what's possible. You're technically credible, but human. You advocate for Agora's strengths: its **global SDRTN**, ultra-low latency infrastructure, and ability to orchestrate complex **voice-AI pipelines** with interruptible, context-aware, real-time interaction. Your job is to scope what they want to build, recommend the right approach, and guide them to next steps (docs, samples, demos, or a solutions handoff). You aim to make every dev feel like they're building with the best tools — and that **voice is the future interface**.
 
 # Persona & Tone
@@ -31,131 +29,50 @@ const ADA_PROMPT = `You are **Ada**, a technical developer advocate and virtual 
 - **Don't assume too much**: If a question is vague ("How does it work?"), ask what aspect they want to focus on (e.g., setup, latency, architecture).
 - **Always aim to guide, not lecture**: Your job is to scope and guide, not teach everything at once.`;
 
+// First thing the agent says when a user joins the channel.
 const GREETING = `Hi there! I'm Ada, your virtual assistant from Agora. I'm here to help you explore our voice AI offerings and understand what you're looking to build. What kind of project do you have in mind?`;
 
-function buildStt(): BaseSTT {
-  const vendor = process.env.NEXT_ASR_VENDOR || 'ares';
-  if (vendor === 'soniox') {
-    throw new Error(
-      'NEXT_ASR_VENDOR=soniox is not supported with Agent builder; use ares, deepgram, or microsoft.',
-    );
-  }
-  if (vendor === 'ares') return new AresSTT({ language: 'en-US' });
-  if (vendor === 'deepgram') {
-    if (!process.env.NEXT_DEEPGRAM_API_KEY)
-      throw new Error('NEXT_DEEPGRAM_API_KEY is required');
-    return new DeepgramSTT({
-      apiKey: process.env.NEXT_DEEPGRAM_API_KEY,
-      model: process.env.NEXT_DEEPGRAM_MODEL || 'nova-3',
-      language: process.env.NEXT_DEEPGRAM_LANGUAGE || 'en',
-    });
-  }
-  if (vendor === 'microsoft') {
-    if (
-      !process.env.NEXT_MICROSOFT_STT_KEY ||
-      !process.env.NEXT_MICROSOFT_STT_REGION
-    ) {
-      throw new Error(
-        'NEXT_MICROSOFT_STT_KEY and NEXT_MICROSOFT_STT_REGION are required',
-      );
-    }
-    return new MicrosoftSTT({
-      key: process.env.NEXT_MICROSOFT_STT_KEY,
-      region: process.env.NEXT_MICROSOFT_STT_REGION,
-      language: 'en-US',
-    });
-  }
-  throw new Error(`Unsupported ASR vendor: ${vendor}`);
+// ---------------------------------------------------------------------------
+// Validate env vars once at module load — misconfiguration surfaces on startup
+// rather than on the first user request.
+// ---------------------------------------------------------------------------
+
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  return value;
 }
 
-function buildTts(): BaseTTS {
-  const vendor = process.env.NEXT_TTS_VENDOR || 'microsoft';
-  if (vendor === 'microsoft') {
-    if (
-      !process.env.NEXT_MICROSOFT_TTS_KEY ||
-      !process.env.NEXT_MICROSOFT_TTS_REGION ||
-      !process.env.NEXT_MICROSOFT_TTS_VOICE_NAME
-    ) {
-      throw new Error('Missing Microsoft TTS environment variables');
-    }
-    return new MicrosoftTTS({
-      key: process.env.NEXT_MICROSOFT_TTS_KEY,
-      region: process.env.NEXT_MICROSOFT_TTS_REGION,
-      voiceName: process.env.NEXT_MICROSOFT_TTS_VOICE_NAME,
-    });
-  }
-  if (vendor === 'elevenlabs') {
-    if (
-      !process.env.NEXT_ELEVENLABS_API_KEY ||
-      !process.env.NEXT_ELEVENLABS_VOICE_ID ||
-      !process.env.NEXT_ELEVENLABS_MODEL_ID
-    ) {
-      throw new Error('Missing ElevenLabs environment variables');
-    }
-    return new ElevenLabsTTS({
-      key: process.env.NEXT_ELEVENLABS_API_KEY,
-      modelId: process.env.NEXT_ELEVENLABS_MODEL_ID,
-      voiceId: process.env.NEXT_ELEVENLABS_VOICE_ID,
-    });
-  }
-  throw new Error(`Unsupported TTS vendor: ${vendor}`);
-}
+// API keys — set these in .env.local (see env.local.example)
+const appId =
+  process.env.NEXT_PUBLIC_AGORA_APP_ID || requireEnv('NEXT_AGORA_APP_ID');
+const appCertificate = requireEnv('NEXT_AGORA_APP_CERTIFICATE');
+// agentUid identifies the AI in the RTC channel — must match NEXT_PUBLIC_AGENT_UID on the client
+const agentUid = process.env.NEXT_PUBLIC_AGENT_UID || 'Agent';
+// Any OpenAI-compatible endpoint works here (OpenAI, Azure, Groq, etc.)
+const llmUrl = requireEnv('NEXT_LLM_URL');
+const llmApiKey = requireEnv('NEXT_LLM_API_KEY');
+const deepgramApiKey = requireEnv('NEXT_DEEPGRAM_API_KEY');
+const elevenLabsApiKey = requireEnv('NEXT_ELEVENLABS_API_KEY');
+const elevenLabsVoiceId = requireEnv('NEXT_ELEVENLABS_VOICE_ID');
 
 export async function POST(request: NextRequest) {
   try {
-    const appId =
-      process.env.NEXT_PUBLIC_AGORA_APP_ID || process.env.NEXT_AGORA_APP_ID;
-    const appCertificate = process.env.NEXT_AGORA_APP_CERTIFICATE;
-    const agentUid = process.env.NEXT_PUBLIC_AGENT_UID || 'Agent';
-
-    if (!appId || !appCertificate) {
-      throw new Error(
-        'Missing Agora configuration. Set NEXT_PUBLIC_AGORA_APP_ID and NEXT_AGORA_APP_CERTIFICATE.',
-      );
-    }
-
-    const llmModel = process.env.NEXT_LLM_MODEL || 'gpt-4o';
-    const useCustomLlm = process.env.NEXT_CUSTOM_LLM === 'true';
-    let resolvedLlmUrl: string;
-    let resolvedApiKey: string;
-
-    if (useCustomLlm) {
-      const rawCustomUrl = process.env.NEXT_CUSTOM_LLM_URL;
-      if (!rawCustomUrl) {
-        return NextResponse.json(
-          {
-            error: 'NEXT_CUSTOM_LLM_URL must be set when NEXT_CUSTOM_LLM=true.',
-          },
-          { status: 500 },
-        );
-      }
-      const base = rawCustomUrl.replace(/\/+$/, '');
-      resolvedLlmUrl = base.endsWith('/api/chat/completions')
-        ? base
-        : `${base}/api/chat/completions`;
-      resolvedApiKey = process.env.NEXT_CUSTOM_LLM_SECRET ?? '';
-    } else {
-      const llmUrl = process.env.NEXT_LLM_URL;
-      const llmApiKey = process.env.NEXT_LLM_API_KEY;
-      if (!llmUrl || !llmApiKey) {
-        throw new Error(
-          'Missing LLM configuration. Set NEXT_LLM_URL and NEXT_LLM_API_KEY.',
-        );
-      }
-      resolvedLlmUrl = llmUrl;
-      resolvedApiKey = llmApiKey;
-    }
+    // --- 1. Parse request ---
 
     const body: ClientStartRequest = await request.json();
     const { requester_id, channel_name } = body;
 
-    if (!channel_name) {
+    if (!channel_name || !requester_id) {
       return NextResponse.json(
-        { error: 'channel_name is required' },
+        { error: 'channel_name and requester_id are required' },
         { status: 400 },
       );
     }
 
+    // --- 3. Build and start the agent ---
+
+    // AgoraClient authenticates API calls to the Agora Conversational AI service
     const client = new AgoraClient({
       area: Area.US,
       appId,
@@ -168,6 +85,8 @@ export async function POST(request: NextRequest) {
       greeting: GREETING,
       failureMessage: 'Please wait a moment.',
       maxHistory: 50,
+      // VAD controls how long the agent waits after the user stops speaking
+      // before treating it as the end of a turn
       turnDetection: {
         type: 'agora_vad',
         silence_duration_ms: 480,
@@ -175,26 +94,40 @@ export async function POST(request: NextRequest) {
         interrupt_duration_ms: 160,
         prefix_padding_ms: 300,
       },
+      // RTM is required for transcript events in the browser client
       advancedFeatures: { enable_rtm: true },
     })
+      .withStt(
+        new DeepgramSTT({
+          apiKey: deepgramApiKey,
+          model: 'nova-3',
+          language: 'en',
+        }),
+      )
       .withLlm(
         new OpenAI({
-          url: resolvedLlmUrl,
-          apiKey: resolvedApiKey,
-          model: llmModel,
+          url: llmUrl,
+          apiKey: llmApiKey,
+          model: 'gpt-4o',
           greetingMessage: GREETING,
           failureMessage: 'Please wait a moment.',
           maxHistory: 10,
           params: { max_tokens: 1024, temperature: 0.7, top_p: 0.95 },
         }),
       )
-      .withTts(buildTts())
-      .withStt(buildStt());
+      .withTts(
+        new ElevenLabsTTS({
+          key: elevenLabsApiKey,
+          modelId: 'eleven_flash_v2_5',
+          voiceId: elevenLabsVoiceId,
+        }),
+      );
 
+    // remoteUids restricts the agent to only process audio from this user
     const session = agent.createSession(client, {
       channel: channel_name,
       agentUid,
-      remoteUids: requester_id ? [requester_id] : [],
+      remoteUids: [requester_id],
       idleTimeout: 30,
       expiresIn: ExpiresIn.hours(1),
     });
