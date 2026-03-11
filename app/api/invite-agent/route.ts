@@ -124,14 +124,6 @@ export async function POST(request: NextRequest) {
           failureMessage: 'Please wait a moment.',
           maxHistory: 15,
           params: { max_tokens: 1024, temperature: 0.7, top_p: 0.95 },
-          // TODO: REMOVE AFTER TESTING
-          mcpServers: [
-            {
-              // Agora's MCP server — exposes Agora docs and APIs as tools
-              name: 'agora-docs',
-              url: 'https://mcp.agora.io',
-            },
-          ],
         }),
       )
       .withTts(
