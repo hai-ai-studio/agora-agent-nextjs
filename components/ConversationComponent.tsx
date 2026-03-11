@@ -406,7 +406,6 @@ export default function ConversationComponent({
       <ConvoTextStream
         messageList={messageList}
         currentInProgressMessage={currentInProgressMessage}
-        agentUID={agentUID}
       />
     </div>
   );

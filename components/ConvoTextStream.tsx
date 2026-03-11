@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
+  MessageType,
   TurnStatus,
   type TranscriptHelperItem,
   type UserTranscription,
@@ -20,13 +21,11 @@ type MessageItem = TranscriptHelperItem<Partial<UserTranscription | AgentTranscr
 interface ConvoTextStreamProps {
   messageList: MessageItem[];
   currentInProgressMessage?: MessageItem | null;
-  agentUID: string | undefined;
 }
 
 export default function ConvoTextStream({
   messageList,
   currentInProgressMessage = null,
-  agentUID,
 }: ConvoTextStreamProps) {
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
@@ -49,12 +48,10 @@ export default function ConvoTextStream({
           status: m.status,
         })),
         'Current in progress:',
-        currentInProgressMessage,
-        'Agent UID:',
-        agentUID
+        currentInProgressMessage
       );
     }
-  }, [messageList, currentInProgressMessage, agentUID]);
+  }, [messageList, currentInProgressMessage]);
 
   // Scroll to bottom function for direct calls
   const scrollToBottom = () => {
@@ -159,11 +156,8 @@ export default function ConvoTextStream({
     }
   };
 
-  // Helper to determine if message is from AI
-  const isAIMessage = (message: MessageItem) => {
-    // The AI should be uid='0' (agent) OR matching the agentUID if provided
-    return message.uid === '0' || (agentUID && message.uid === agentUID);
-  };
+  const isAIMessage = (message: MessageItem) =>
+    message.metadata?.object === MessageType.AGENT_TRANSCRIPTION;
 
   // Combine complete messages with in-progress message for rendering
   const allMessages = [...messageList];
