@@ -51,7 +51,7 @@ export default function ConversationComponent({
   const { localMicrophoneTrack } = useLocalMicrophoneTrack(isEnabled);
   const [isAgentConnected, setIsAgentConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const agentUID = process.env.NEXT_AGENT_UID;
+  const agentUID = process.env.NEXT_PUBLIC_AGENT_UID;
   const [joinedUID, setJoinedUID] = useState<UID>(0);
   const [messageList, setMessageList] = useState<IMessageListItem[]>([]);
   const [currentInProgressMessage, setCurrentInProgressMessage] = useState<IMessageListItem | null>(null);
@@ -312,16 +312,16 @@ export default function ConversationComponent({
     }
   });
 
-  // Cleanup on unmount
+  // Cleanup local microphone track on unmount
+  // Note: useJoin already handles client.leave() automatically — do NOT call it
+  // here too, as doing so while a join is still in progress causes WS_ABORT: LEAVE.
   useEffect(() => {
     return () => {
-      // Close the local track first to release the microphone (per Agora docs)
       if (localMicrophoneTrack) {
         localMicrophoneTrack.close();
       }
-      client?.leave();
     };
-  }, [client, localMicrophoneTrack]);
+  }, [localMicrophoneTrack]);
 
   const handleStartConversation = async () => {
     if (!agoraData.agentId) return;

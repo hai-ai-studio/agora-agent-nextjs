@@ -39,7 +39,6 @@ export default function LandingPage() {
   const [error, setError] = useState<string | null>(null);
   const [agoraData, setAgoraData] = useState<AgoraTokenData | null>(null);
   const [agentJoinError, setAgentJoinError] = useState(false);
-
   const handleStartConversation = async () => {
     setIsLoading(true);
     setError(null);
