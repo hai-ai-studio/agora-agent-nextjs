@@ -7,7 +7,7 @@ import {
   OpenAI,
   ElevenLabsTTS,
   DeepgramSTT,
-} from 'agent-server-sdk-ts';
+} from 'agora-agent-server-sdk';
 import { ClientStartRequest, AgentResponse } from '@/types/conversation';
 
 // System prompt that defines the agent's personality and behavior.

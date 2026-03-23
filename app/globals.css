@@ -120,3 +120,31 @@ strong {
 .animate-chat-pulse {
   animation: chat-pulse 2s ease-in-out infinite;
 }
+
+/* MicButtonWithVisualizer: parent flex can stretch the <button> unevenly — force a true circle */
+.conversation-mic-host {
+  flex-shrink: 0;
+}
+.conversation-mic-host > button {
+  aspect-ratio: 1 / 1;
+  width: 3rem;
+  height: 3rem;
+  min-width: 3rem;
+  min-height: 3rem;
+  max-width: 3rem;
+  max-height: 3rem;
+  border-radius: 9999px;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: visible; /* Web Audio bar visualizer in bottom band; avoid clipping */
+}
+@media (min-width: 640px) {
+  .conversation-mic-host > button {
+    width: 3.5rem;
+    height: 3.5rem;
+    min-width: 3.5rem;
+    min-height: 3.5rem;
+    max-width: 3.5rem;
+    max-height: 3.5rem;
+  }
+}

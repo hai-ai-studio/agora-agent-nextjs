@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { AgoraClient, Area } from 'agent-server-sdk-ts';
+import { AgoraClient, Area } from 'agora-agent-server-sdk';
 import { StopConversationRequest } from '@/types/conversation';
 
 export async function POST(request: Request) {

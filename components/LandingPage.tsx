@@ -2,6 +2,7 @@
 
 import { useState, useMemo, Suspense } from 'react';
 import dynamic from 'next/dynamic';
+import type { RTMClient } from 'agora-rtm';
 import type {
   AgoraTokenData,
   ClientStartRequest,
@@ -38,54 +39,61 @@ export default function LandingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [agoraData, setAgoraData] = useState<AgoraTokenData | null>(null);
+  const [rtmClient, setRtmClient] = useState<RTMClient | null>(null);
   const [agentJoinError, setAgentJoinError] = useState(false);
+
   const handleStartConversation = async () => {
     setIsLoading(true);
     setError(null);
     setAgentJoinError(false);
 
     try {
-      // First, get the Agora token
+      // 1. Fetch RTC token + channel
       console.log('Fetching Agora token...');
       const agoraResponse = await fetch('/api/generate-agora-token');
       const responseData = await agoraResponse.json();
       console.log('Agora API response:', responseData);
 
       if (!agoraResponse.ok) {
-        throw new Error(
-          `Failed to generate Agora token: ${JSON.stringify(responseData)}`
-        );
+        throw new Error(`Failed to generate Agora token: ${JSON.stringify(responseData)}`);
       }
 
-      // Send the channel name when starting the conversation
-      const startRequest: ClientStartRequest = {
-        requester_id: responseData.uid,
-        channel_name: responseData.channel,
-      };
-
+      // 2. Start the AI agent (non-fatal — show conversation even if this fails)
+      let agentData: AgentResponse | null = null;
       try {
-        const response = await fetch('/api/invite-agent', {
+        const startRequest: ClientStartRequest = {
+          requester_id: responseData.uid,
+          channel_name: responseData.channel,
+        };
+        const agentResponse = await fetch('/api/invite-agent', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(startRequest),
         });
-
-        if (!response.ok) {
+        if (!agentResponse.ok) {
           setAgentJoinError(true);
         } else {
-          const agentData: AgentResponse = await response.json();
-          setAgoraData({
-            ...responseData,
-            agentId: agentData.agent_id,
-          });
+          agentData = await agentResponse.json();
         }
       } catch (err) {
         console.error('Failed to start conversation with agent:', err);
         setAgentJoinError(true);
       }
 
+      // 3. Set up RTM before rendering the conversation so ConversationalAIProvider
+      //    always receives a fully-connected client and can mount unconditionally.
+      //    A unique per-session userId avoids kicking other open tabs on the same token.
+      //    Dynamically import agora-rtm to keep it client-only (LandingPage renders on server).
+      const { default: AgoraRTM } = await import('agora-rtm');
+      const rtmUserId = String(Date.now());
+      const rtm = new AgoraRTM.RTM(process.env.NEXT_PUBLIC_AGORA_APP_ID!, rtmUserId);
+      await rtm.login({ token: responseData.token });
+      await rtm.subscribe(responseData.channel);
+      console.log('RTM ready, channel:', responseData.channel);
+
+      // 4. All dependencies ready — store state and show conversation
+      setRtmClient(rtm);
+      setAgoraData({ ...responseData, agentId: agentData?.agent_id });
       setShowConversation(true);
     } catch (err) {
       setError('Failed to start conversation. Please try again.');
@@ -101,16 +109,38 @@ export default function LandingPage() {
         `/api/generate-agora-token?channel=${agoraData?.channel}&uid=${uid}`
       );
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error('Failed to generate new token');
-      }
-
+      if (!response.ok) throw new Error('Failed to generate new token');
       return data.token;
     } catch (error) {
       console.error('Error renewing token:', error);
       throw error;
     }
+  };
+
+  const handleEndConversation = async () => {
+    // Stop the AI agent
+    if (agoraData?.agentId) {
+      try {
+        console.log('Stopping agent:', agoraData.agentId);
+        const response = await fetch('/api/stop-conversation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ agent_id: agoraData.agentId }),
+        });
+        if (!response.ok) {
+          console.error('Failed to stop agent:', await response.text());
+        } else {
+          console.log('Agent stopped successfully');
+        }
+      } catch (error) {
+        console.error('Error stopping agent:', error);
+      }
+    }
+
+    // Tear down RTM — owned here since we created it here
+    rtmClient?.logout().catch((err) => console.error('RTM logout error:', err));
+    setRtmClient(null);
+    setShowConversation(false);
   };
 
   return (
@@ -138,7 +168,7 @@ export default function LandingPage() {
               </button>
               {error && <p className="mt-4 text-destructive">{error}</p>}
             </>
-          ) : agoraData ? (
+          ) : agoraData && rtmClient ? (
             <>
               {agentJoinError && (
                 <div className="mb-4 p-3 bg-destructive/20 rounded-lg text-destructive">
@@ -150,30 +180,9 @@ export default function LandingPage() {
                 <AgoraProvider>
                   <ConversationComponent
                     agoraData={agoraData}
+                    rtmClient={rtmClient}
                     onTokenWillExpire={handleTokenWillExpire}
-                    onEndConversation={async () => {
-                      if (agoraData?.agentId) {
-                        try {
-                          console.log('Stopping agent:', agoraData.agentId);
-                          const response = await fetch('/api/stop-conversation', {
-                            method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ agent_id: agoraData.agentId }),
-                          });
-
-                          if (!response.ok) {
-                            console.error('Failed to stop agent:', await response.text());
-                          } else {
-                            console.log('Agent stopped successfully');
-                          }
-                        } catch (error) {
-                          console.error('Error stopping agent:', error);
-                        }
-                      }
-                      setShowConversation(false);
-                    }}
+                    onEndConversation={handleEndConversation}
                   />
                 </AgoraProvider>
               </Suspense>
