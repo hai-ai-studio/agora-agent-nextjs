@@ -146,6 +146,7 @@ export async function POST(request: NextRequest) {
       remoteUids: [requester_id],
       idleTimeout: 30,
       expiresIn: ExpiresIn.hours(1),
+      // debug: true,
     });
 
     const agentId = await session.start();
