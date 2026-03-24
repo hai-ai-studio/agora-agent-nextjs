@@ -1,12 +1,12 @@
 # Build a Conversational AI App with Next.js and Agora
 
-Conversational AI is all the hype. It allows you to have a real-time conversation with an AI agent, and actually get something done without wasting time typing out your thoughts and trying to format them into a clever prompt. It's a major shift in the way people interact with AI.
+Conversational Voice AI is transforming how people interact with AI. It allows you to have a real-time conversation with an AI agent, and actually get something done without wasting time typing out your thoughts and trying to format them into a clever prompt. It's a major shift in the way people interact with AI.
 
-But given the investment that developers and businesses have made in building their own text based agents that run through custom LLM workflows, there's reluctance to adopt this new paradigm. Especially if it means having to give up all that investment or event worse, hobble it by only connecting them as tools/function calls.
+But given the investment that developers and businesses have made in building their own text based agents that run through custom LLM workflows, there's reluctance to adopt this new paradigm. Especially if it means having to give up all that investment or even worse, hobble it by only connecting them as tools/function calls.
 
 This is why we built the Agora Conversational AI Engine. It allows you to connect your existing LLM workflows to an Agora channel, and have a real-time conversation with the AI agent.
 
-In this guide, we'll build a real-time audio conversation application that connects users with an AI agent powered by Agora's Conversational AI Engine. The app will be built with NextJS, React, and TypeScript. We'll take an incremental approach, starting with the core real-time communication components and then add-in Agora's Convo AI Engine.
+In this guide, we'll build a real-time audio conversation application that connects users with an AI agent powered by Agora's Conversational AI Engine. The app will be built with Next.js, React, and TypeScript. We'll take an incremental approach, starting with the core real-time communication components and then adding Agora's Convo AI Engine.
 
 By the end of this guide, you will have a real-time audio conversation application that connects users with an AI agent powered by Agora's Conversational AI Engine.
 
@@ -14,14 +14,14 @@ By the end of this guide, you will have a real-time audio conversation applicati
 
 Before starting, for the guide you're going to need to have:
 
-- Node.js (v18 or higher)
-- A basic understanding of React with TypeScript and NextJS.
+- Node.js (v22 or higher)
+- A basic understanding of React with TypeScript and Next.js.
 - [An Agora account](https://console.agora.io/signup) - _first 10k minutes each month are free_
 - Conversational AI service [activated on your AppID](https://console.agora.io/)
 
 ## Project Setup
 
-Let's start by creating a new NextJS project with TypeScript support.
+Let's start by creating a new Next.js project with TypeScript support.
 
 ```bash
 pnpm create next-app@latest ai-conversation-app
@@ -40,23 +40,21 @@ When prompted, select these options:
 
 Next, install the required Agora dependencies:
 
-- Agora's React SDK: [agora-rtc-react](https://www.npmjs.com/package/agora-rtc-react)
-- Agora's Token Builder: [agora-token](https://www.npmjs.com/package/agora-token)
+- [agora-rtc-react](https://www.npmjs.com/package/agora-rtc-react) — Agora's React SDK for real-time audio/video
+- [agora-rtm](https://www.npmjs.com/package/agora-rtm) — Agora's Real-Time Messaging SDK (used for transcripts)
+- [agora-token](https://www.npmjs.com/package/agora-token) — Agora's Token Builder (server-side)
+- [agora-agent-server-sdk](https://www.npmjs.com/package/agora-agent-server-sdk) — invites and manages the AI agent (server-side)
+- [agora-agent-client-toolkit](https://www.npmjs.com/package/agora-agent-client-toolkit) — handles transcript events from the AI agent
+- [agora-agent-uikit](https://www.npmjs.com/package/agora-agent-uikit) — ready-made UI components for the conversation interface
 
 ```bash
-pnpm add agora-rtc-react agora-token
+pnpm add agora-rtc-react agora-rtm agora-token agora-agent-server-sdk agora-agent-client-toolkit agora-agent-uikit
 ```
 
 For UI components, we'll use shadcn/ui in this guide, but you can use any UI library of your choice or create custom components:
 
 ```bash
 pnpm dlx shadcn@latest init
-```
-
-For this guide, we'll also use Lucide icons, so install that too:
-
-```bash
-pnpm add lucide-react
 ```
 
 As we go through this guide, you'll have to create new files in specific directories. So, before we start let's create these new directories.
@@ -80,6 +78,27 @@ Your project directory should now have a structure like this:
 ├── types/
 ├── .env.local
 └── (... Existing files and directories)
+```
+
+### Tailwind Configuration
+
+The `agora-agent-uikit` package ships pre-built components with Tailwind class names. To ensure those classes are included in your production build, add the uikit's `dist/` folder to Tailwind's `content` array in `tailwind.config.ts`:
+
+```typescript
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  content: [
+    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    // Scan the uikit's compiled output so its Tailwind classes are included
+    "./node_modules/agora-agent-uikit/dist/**/*.{js,mjs}",
+  ],
+  // ... rest of your config
+};
+
+export default config;
 ```
 
 ## Landing Page Component
@@ -185,7 +204,7 @@ Add the following code:
 ```typescript
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   useRTCClient,
   useLocalMicrophoneTrack,
@@ -207,12 +226,28 @@ export default function ConversationComponent() {
 
   // Manage microphone state
   const [isEnabled, setIsEnabled] = useState(true);
-  const { localMicrophoneTrack } = useLocalMicrophoneTrack(isEnabled);
 
   // Track remote users (like our AI agent)
   const remoteUsers = useRemoteUsers();
 
-  // Join the channel when component mounts
+  // StrictMode guard: delay useJoin's ready flag until after the fake-unmount
+  // cycle completes. React StrictMode fires cleanup synchronously before any
+  // setTimeout callback, so the first (fake) mount's timeout is always cancelled.
+  // Only the real second mount's timeout fires, meaning useJoin joins exactly once.
+  const [isReady, setIsReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const id = setTimeout(() => {
+      if (!cancelled) setIsReady(true);
+    }, 0);
+    return () => {
+      cancelled = true;
+      clearTimeout(id);
+      setIsReady(false);
+    };
+  }, []);
+
+  // Join the channel once isReady (after StrictMode's fake-unmount cycle)
   const { isConnected: joinSuccess } = useJoin(
     {
       appid: process.env.NEXT_PUBLIC_AGORA_APP_ID!, // Load APP_ID from env.local
@@ -220,8 +255,13 @@ export default function ConversationComponent() {
       token: 'replace-with-token',
       uid: 0, // Join with UID 0 and Agora will assign a unique ID when the user joins
     },
-    true // Join automatically when the component mounts
+    isReady
   );
+
+  // Create mic track only after the StrictMode cycle completes.
+  // Do NOT pass isEnabled here — that ties track lifetime to mute state and
+  // breaks the Web Audio graph. Mute uses track.setEnabled() only.
+  const { localMicrophoneTrack } = useLocalMicrophoneTrack(isReady);
 
   // Publish our microphone track to the channel
   usePublish([localMicrophoneTrack]);
@@ -235,20 +275,16 @@ export default function ConversationComponent() {
     console.log('Remote user left:', user.uid);
   });
 
-  // Toggle microphone on/off
+  // Toggle microphone via setEnabled — usePublish owns publish state
   const toggleMicrophone = async () => {
     if (localMicrophoneTrack) {
-      await localMicrophoneTrack.setEnabled(!isEnabled);
-      setIsEnabled(!isEnabled);
+      const next = !isEnabled;
+      await localMicrophoneTrack.setEnabled(next);
+      setIsEnabled(next);
     }
   };
 
-  // Clean up when component unmounts
-  useEffect(() => {
-    return () => {
-      client?.leave(); // Leave the channel when the component unmounts
-    };
-  }, [client]);
+  // useJoin handles client.leave() on unmount — no manual cleanup needed here
 
   return (
     <div className="p-4 bg-gray-800 rounded-lg">
@@ -298,6 +334,8 @@ This component is the foundation for our real-time audio communication, so let's
 - `usePublish`: Publishes our audio track to the channel so others can hear us
 - `useClientEvent`: Sets up event handlers for important events like users joining or leaving
 
+> **Note on React StrictMode:** In development, React StrictMode mounts components twice to surface bugs. Without the `isReady` guard, `useJoin` would call `client.join()`, then immediately `client.leave()` (fake unmount cleanup), then `client.join()` again — causing an audio disruption. The `setTimeout(fn, 0)` pattern prevents this: StrictMode cleanup fires synchronously before any setTimeout callback, so only the real second mount's timer fires, and `useJoin` joins exactly once.
+
 > **Note:** We are loading the `APP_ID` from the environment variables using the non-null assertion operator, so make sure to set it in `.env.local` file.
 
 We need to add this component to our `LandingPage.tsx` file. Start by importing the component, and then add it to the AgoraProvider component.
@@ -316,7 +354,7 @@ const ConversationComponent = dynamic(() => import('./ConversationComponent'), {
 
 Next, we'll implement token authentication, to add a layer of security to our application.
 
-## 4. Token Generation and Management
+## Token Generation and Management
 
 The Agora team strongly recommends using token-based authentication for all your apps, especially in production environments. In this step, we'll create a route to generate these tokens and update our `LandingPage` and `ConversationComponent` to use them.
 
@@ -363,7 +401,7 @@ export async function GET(request: NextRequest) {
     console.error('Agora credentials are not set');
     return NextResponse.json(
       { error: 'Agora credentials are not set' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -381,7 +419,12 @@ export async function GET(request: NextRequest) {
 
   try {
     // Generate the token using Agora's Token Builder SDK (RTC + RTM for text streaming)
-    console.log('Building RTC+RTM token with UID:', uid, 'Channel:', channelName);
+    console.log(
+      'Building RTC+RTM token with UID:',
+      uid,
+      'Channel:',
+      channelName,
+    );
     const token = RtcTokenBuilder.buildTokenWithRtm(
       APP_ID,
       APP_CERTIFICATE,
@@ -389,7 +432,7 @@ export async function GET(request: NextRequest) {
       uid,
       RtcRole.PUBLISHER, // User can publish audio/video
       expirationTime,
-      expirationTime
+      expirationTime,
     );
 
     console.log('Token generated successfully (RTC + RTM)');
@@ -403,7 +446,7 @@ export async function GET(request: NextRequest) {
     console.error('Error generating Agora token:', error);
     return NextResponse.json(
       { error: 'Failed to generate Agora token', details: error },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -411,15 +454,16 @@ export async function GET(request: NextRequest) {
 
 This route handles token generation for our application, so let's recap the important features:
 
-- Generates a unique channel names using timestamps and random strings to avoid collisions
+- Generates unique channel names using timestamps and random strings to avoid collisions
 - Generates a secure token using the App ID and Certificate
 - Accepts url parameters for refreshing tokens using an existing channel name and user ID
+- Uses `buildTokenWithRtm` to generate a combined RTC + RTM token — RTM is needed for the transcript feature we'll add later
 
 > **Note:** This route is loading the APP_ID and APP_CERTIFICATE from the environment variables, so make sure to set them in your `.env.local` file.
 
 ### Updating the Landing Page to Request Tokens
 
-With the token route setup, let's update the landing page, to handle all token fetching logic. First, we'll need to create a new type definition for the token data, so we can use it in our component.
+With the token route setup, let's update the landing page to handle all session setup logic. First, we'll need to create some type definitions.
 
 Create a file at `types/conversation.ts`:
 
@@ -430,6 +474,8 @@ touch types/conversation.ts
 Add the following code:
 
 ```typescript
+import type { RTMClient } from 'agora-rtm';
+
 // Types for Agora token data
 export interface AgoraTokenData {
   token: string;
@@ -437,17 +483,44 @@ export interface AgoraTokenData {
   channel: string;
   agentId?: string;
 }
+
+// Props for our conversation component
+export interface ConversationComponentProps {
+  agoraData: AgoraTokenData;
+  rtmClient: RTMClient;  // RTM client for transcript delivery
+  onTokenWillExpire: (uid: string) => Promise<string>;
+  onEndConversation: () => void;
+}
+
+// Types for the agent invitation API
+export interface ClientStartRequest {
+  requester_id: string;
+  channel_name: string;
+}
+
+export interface AgentResponse {
+  agent_id: string;
+  create_ts: number;
+  state: string;
+}
+
+export interface StopConversationRequest {
+  agent_id: string;
+}
 ```
 
-Open the `components/LandingPage.tsx` file, update the react imports, add the new import statement for the `AgoraTokenData` type, and update the entire `LandingPage()` function.
+Open the `components/LandingPage.tsx` file and update it with the full implementation. The key additions here are:
 
-We'll use Suspense, because the Agora React SDK is dynamically loaded, and the conversation component needs some time to load, so it'll be good to show a loading state till its ready.
+- **Module preloading**: Kick off dynamic imports on mount so they're cached when the user clicks "Try it now!" — this eliminates the ~1–2 second import delay
+- **Parallel setup**: Agent invite and RTM login run in `Promise.all` — both only need the token, so there's no reason to run them sequentially
+- **RTM client**: Created here and passed down to `ConversationComponent` so the toolkit can subscribe to transcript messages
 
 ```typescript
 'use client';
 
-import { useState, useMemo, Suspense } from 'react';
+import { useState, useMemo, Suspense, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import type { RTMClient } from 'agora-rtm';
 import type {
   AgoraTokenData,
   ClientStartRequest,
@@ -477,14 +550,19 @@ const AgoraProvider = dynamic(
 );
 
 export default function LandingPage() {
-  // Manage conversation state
   const [showConversation, setShowConversation] = useState(false);
-  // Manage loading state, while the agent token is generated
+
+  // Preload heavy modules on mount so they're already cached when the user
+  // clicks "Try it now!" — eliminates the dynamic-import delay on first click.
+  useEffect(() => {
+    import('agora-rtc-react').catch(() => {});
+    import('agora-rtm').catch(() => {});
+  }, []);
+
   const [isLoading, setIsLoading] = useState(false);
-  // Manage error state
   const [error, setError] = useState<string | null>(null);
-  // Store the token data for the conversation
   const [agoraData, setAgoraData] = useState<AgoraTokenData | null>(null);
+  const [rtmClient, setRtmClient] = useState<RTMClient | null>(null);
   const [agentJoinError, setAgentJoinError] = useState(false);
 
   const handleStartConversation = async () => {
@@ -493,48 +571,55 @@ export default function LandingPage() {
     setAgentJoinError(false);
 
     try {
-      // Step 1: Request a token from our API
+      // Step 1: Fetch RTC token + channel
       console.log('Fetching Agora token...');
       const agoraResponse = await fetch('/api/generate-agora-token');
       const responseData = await agoraResponse.json();
-      console.log('Agora API response:', responseData);
 
       if (!agoraResponse.ok) {
-        throw new Error(
-          `Failed to generate Agora token: ${JSON.stringify(responseData)}`
-        );
+        throw new Error(`Failed to generate Agora token: ${JSON.stringify(responseData)}`);
       }
 
-      // Step 2: Invite the AI agent to join the channel
-      const startRequest: ClientStartRequest = {
-        requester_id: responseData.uid,
-        channel_name: responseData.channel,
-        input_modalities: ['text'],
-        output_modalities: ['text', 'audio'],
-      };
-
-      try {
-        const response = await fetch('/api/invite-agent', {
+      // Step 2: Run agent invite and RTM setup in parallel — both only need the token.
+      // RTM must be ready before ConversationComponent mounts (the toolkit needs
+      // a fully-connected RTM client). Agent invite is non-fatal.
+      const [agentData, rtm] = await Promise.all([
+        // 2a. Start the AI agent
+        fetch('/api/invite-agent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(startRequest),
-        });
+          body: JSON.stringify({
+            requester_id: responseData.uid,
+            channel_name: responseData.channel,
+          } as ClientStartRequest),
+        })
+          .then(async (res) => {
+            if (!res.ok) { setAgentJoinError(true); return null; }
+            return res.json() as Promise<AgentResponse>;
+          })
+          .catch((err) => {
+            console.error('Failed to start conversation with agent:', err);
+            setAgentJoinError(true);
+            return null;
+          }),
 
-        if (!response.ok) {
-          setAgentJoinError(true);
-        } else {
-          const agentData: AgentResponse = await response.json();
-          setAgoraData({
-            ...responseData,
-            agentId: agentData.agent_id,
-          });
-        }
-      } catch (err) {
-        console.error('Failed to start conversation with agent:', err);
-        setAgentJoinError(true);
-      }
+        // 2b. Set up RTM for transcript delivery
+        (async () => {
+          const { default: AgoraRTM } = await import('agora-rtm');
+          const rtm = new AgoraRTM.RTM(
+            process.env.NEXT_PUBLIC_AGORA_APP_ID!,
+            String(Date.now())
+          );
+          await rtm.login({ token: responseData.token });
+          await rtm.subscribe(responseData.channel);
+          console.log('RTM ready, channel:', responseData.channel);
+          return rtm as RTMClient;
+        })(),
+      ]);
 
-      // Show the conversation UI even if agent join fails
+      // Step 3: All dependencies ready — store state and show conversation
+      setRtmClient(rtm);
+      setAgoraData({ ...responseData, agentId: agentData?.agent_id });
       setShowConversation(true);
     } catch (err) {
       setError('Failed to start conversation. Please try again.');
@@ -546,21 +631,41 @@ export default function LandingPage() {
 
   const handleTokenWillExpire = async (uid: string) => {
     try {
-      // Request a new token using the channel name and uid
       const response = await fetch(
         `/api/generate-agora-token?channel=${agoraData?.channel}&uid=${uid}`
       );
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error('Failed to generate new token');
-      }
-
+      if (!response.ok) throw new Error('Failed to generate new token');
       return data.token;
     } catch (error) {
       console.error('Error renewing token:', error);
       throw error;
     }
+  };
+
+  const handleEndConversation = async () => {
+    // Stop the AI agent
+    if (agoraData?.agentId) {
+      try {
+        const response = await fetch('/api/stop-conversation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ agent_id: agoraData.agentId }),
+        });
+        if (!response.ok) {
+          console.error('Failed to stop agent:', await response.text());
+        } else {
+          console.log('Agent stopped successfully');
+        }
+      } catch (error) {
+        console.error('Error stopping agent:', error);
+      }
+    }
+
+    // Tear down RTM — owned here since we created it here
+    rtmClient?.logout().catch((err) => console.error('RTM logout error:', err));
+    setRtmClient(null);
+    setShowConversation(false);
   };
 
   return (
@@ -584,12 +689,12 @@ export default function LandingPage() {
               >
                 {isLoading ? 'Starting...' : 'Try it now!'}
               </button>
-              {error && <p className="mt-4 text-destructive">{error}</p>}
+              {error && <p className="mt-4 text-red-500">{error}</p>}
             </>
-          ) : agoraData ? (
+          ) : agoraData && rtmClient ? (
             <>
               {agentJoinError && (
-                <div className="mb-4 p-3 bg-destructive/20 rounded-lg text-destructive">
+                <div className="mb-4 p-3 bg-red-900/20 rounded-lg text-red-400">
                   Failed to connect with AI agent. The conversation may not work
                   as expected.
                 </div>
@@ -598,28 +703,9 @@ export default function LandingPage() {
                 <AgoraProvider>
                   <ConversationComponent
                     agoraData={agoraData}
+                    rtmClient={rtmClient}
                     onTokenWillExpire={handleTokenWillExpire}
-                    onEndConversation={async () => {
-                      if (agoraData?.agentId) {
-                        try {
-                          console.log('Stopping agent:', agoraData.agentId);
-                          const response = await fetch('/api/stop-conversation', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ agent_id: agoraData.agentId }),
-                          });
-
-                          if (!response.ok) {
-                            console.error('Failed to stop agent:', await response.text());
-                          } else {
-                            console.log('Agent stopped successfully');
-                          }
-                        } catch (error) {
-                          console.error('Error stopping agent:', error);
-                        }
-                      }
-                      setShowConversation(false);
-                    }}
+                    onEndConversation={handleEndConversation}
                   />
                 </AgoraProvider>
               </Suspense>
@@ -629,167 +715,82 @@ export default function LandingPage() {
           )}
         </div>
       </div>
-      <footer className="fixed bottom-0 left-0 py-4 pl-4 md:py-6 md:pl-6 z-40">
-        <div className="flex items-center justify-start space-x-2 text-gray-400">
-          <span className="text-sm font-light uppercase">Powered by</span>
-          <a
-            href="https://agora.io/en/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-cyan-300 transition-colors"
-            aria-label="Visit Agora's website"
-          >
-            <img
-              src="/agora-logo-rgb-blue.svg"
-              alt="Agora"
-              className="h-6 w-auto hover:opacity-80 transition-opacity translate-y-1"
-            />
-            <span className="sr-only">Agora</span>
-          </a>
-        </div>
-      </footer>
     </div>
   );
 }
 ```
 
-> Don't worry about any errors or warnings on the ConversationComponent for now, we'll fix them in the next step.
-
 ### Updating the Conversation Component to Use Tokens
 
-Now that we have token and channel name, lets create some props so we can pass them from the `LandingPage` to the `ConversationComponent`.
-
-Open the `types/conversation.ts` file and add the following `interface`:
-
-```typescript
-// Props for our conversation component
-export interface ConversationComponentProps {
-  agoraData: AgoraTokenData;
-  onTokenWillExpire: (uid: string) => Promise<string>;
-  onEndConversation: () => void;
-}
-```
-
-Open the `ConversationComponent.tsx` file and update it to import and use the props we just created to join the channel. We'll also add the token-expiry event handler to handle token renewal, and a button to leave the conversation.
+Now update `ConversationComponent` to accept the props from `LandingPage`. The component also gains proper token renewal and an end-conversation button.
 
 ```typescript
 // Previous imports remain the same as before...
-import type { ConversationComponentProps } from '../types/conversation'; // Import the new props
+import type { ConversationComponentProps } from '../types/conversation';
 
-// Update the component to accept the new props
 export default function ConversationComponent({
   agoraData,
+  rtmClient,
   onTokenWillExpire,
   onEndConversation,
 }: ConversationComponentProps) {
-  // The previous declarations remain the same as before
-  const [joinedUID, setJoinedUID] = useState<UID>(0); // New: After joining the channel we'll store the uid for renewing the token
+  // ... existing state declarations ...
+  const [joinedUID, setJoinedUID] = useState<UID>(0);
 
-  // Update the useJoin hook to use the token and channel name from the props
+  // isReady guard (same pattern as above)
+  const [isReady, setIsReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const id = setTimeout(() => {
+      if (!cancelled) setIsReady(true);
+    }, 0);
+    return () => {
+      cancelled = true;
+      clearTimeout(id);
+      setIsReady(false);
+    };
+  }, []);
+
+  // Update useJoin to use token and channel from props
   const { isConnected: joinSuccess } = useJoin(
     {
       appid: process.env.NEXT_PUBLIC_AGORA_APP_ID!,
-      channel: agoraData.channel, // Using the channel name received from the token response
-      token: agoraData.token, // Using the token we received
-      uid: parseInt(agoraData.uid), // Using uid 0 to join the channel, so Agora's system will create and return a uid for us
+      channel: agoraData.channel,
+      token: agoraData.token,
+      uid: parseInt(agoraData.uid, 10) || 0,
     },
-    true
+    isReady
   );
 
-  // Set the actualUID to the Agora generated uid once the user joins the channel
+  const { localMicrophoneTrack } = useLocalMicrophoneTrack(isReady);
+
+  // Capture the RTC-assigned UID for token renewal
   useEffect(() => {
     if (joinSuccess && client) {
-      const uid = client.uid;
-      setJoinedUID(uid as UID);
-      console.log('Join successful, using UID:', uid);
+      setJoinedUID(client.uid as UID);
+      console.log('Join successful, using UID:', client.uid);
     }
   }, [joinSuccess, client]);
 
-  /*
-  Existing code remains the same as before:
-  // Publish local microphone track
-  // Handle remote user events
-  // Handle remote user left event
-*/
+  // Token renewal — also renews the RTM token since they share the same token
+  const handleTokenWillExpire = useCallback(async () => {
+    if (!onTokenWillExpire || !joinedUID) return;
+    try {
+      const newToken = await onTokenWillExpire(joinedUID.toString());
+      await client?.renewToken(newToken);
+      await rtmClient.renewToken(newToken);
+      console.log('Successfully renewed Agora RTC and RTM tokens');
+    } catch (error) {
+      console.error('Failed to renew Agora token:', error);
+    }
+  }, [client, onTokenWillExpire, joinedUID, rtmClient]);
 
-  // New: Add listener for connection state changes
+  useClientEvent(client, 'token-privilege-will-expire', handleTokenWillExpire);
   useClientEvent(client, 'connection-state-change', (curState, prevState) => {
     console.log(`Connection state changed from ${prevState} to ${curState}`);
   });
 
-  // Add token renewal handler to avoid disconnections
-  const handleTokenWillExpire = useCallback(async () => {
-    if (!onTokenWillExpire || !joinedUID) return;
-    try {
-      // Request a new token from our API
-      const newToken = await onTokenWillExpire(joinedUID.toString());
-      await client?.renewToken(newToken);
-      console.log('Successfully renewed Agora token');
-    } catch (error) {
-      console.error('Failed to renew Agora token:', error);
-    }
-  }, [client, onTokenWillExpire, joinedUID]);
-
-  // New: Add listener for token privilege will expire event
-  useClientEvent(client, 'token-privilege-will-expire', handleTokenWillExpire);
-
-  /*
-  Existing code remains the same as before:
-  // Toggle microphone
-  // Cleanup on unmount
-*/
-
-  //update the return statement to include new UI elements for leaving the conversation
-  return (
-    <div className="p-4 bg-gray-800 rounded-lg">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div
-            className={`w-3 h-3 rounded-full ${
-              isConnected ? 'bg-green-500' : 'bg-red-500'
-            }`}
-          />
-          <span className="text-white">
-            {isConnected ? 'Connected' : 'Disconnected'}
-          </span>
-        </div>
-
-        <button
-          onClick={onEndConversation}
-          className="px-4 py-2 bg-red-500 text-white rounded"
-        >
-          End Conversation
-        </button>
-      </div>
-
-      {/* Display remote users */}
-      <div className="mb-4">
-        <h2 className="text-xl mb-2 text-white">Remote Users:</h2>
-        {remoteUsers.length > 0 ? (
-          remoteUsers.map((user) => (
-            <div
-              key={user.uid}
-              className="p-2 bg-gray-700 rounded mb-2 text-white"
-            >
-              <RemoteUser user={user} />
-            </div>
-          ))
-        ) : (
-          <p className="text-gray-400">No remote users connected</p>
-        )}
-      </div>
-
-      {/* Microphone control */}
-      <button
-        onClick={toggleMicrophone}
-        className={`px-4 py-2 rounded ${
-          isEnabled ? 'bg-green-500' : 'bg-red-500'
-        } text-white`}
-      >
-        Microphone: {isEnabled ? 'On' : 'Off'}
-      </button>
-    </div>
-  );
+  // ... rest of component
 }
 ```
 
@@ -799,7 +800,7 @@ Now that we have our basic RTC functionality and token generation working, let's
 
 1. Run the application using `pnpm run dev`
 2. Open the application in your browser, using the url `http://localhost:3000`
-3. Click on the "Start Conversation" button
+3. Click on the "Try it now!" button
 4. You should see the connection status change to "Connected"
 
 ## Add Agora's Conversational AI Engine
@@ -810,110 +811,9 @@ Now that we have the basic RTC functionality working, let's integrate Agora's Co
 2. Configure Agora Start Request, including our choice of LLM endpoint and TTS provider
 3. Create a route for stopping the conversation
 
-### Types Setup
-
-Let's get the boring stuff out of the way first. Add some new types to the `types/conversation.ts` file:
-
-```typescript
-// Previous types remain the same as before...
-
-// New types for the agent invitation API
-export interface ClientStartRequest {
-  requester_id: string;
-  channel_name: string;
-  rtc_codec?: number;
-  input_modalities?: string[];
-  output_modalities?: string[];
-}
-
-interface MicrosoftTTSParams {
-  key: string;
-  region: string;
-  voice_name: string;
-  rate?: number;
-  volume?: number;
-}
-
-interface ElevenLabsTTSParams {
-  key: string;
-  voice_id: string;
-  model_id: string;
-}
-
-export enum TTSVendor {
-  Microsoft = 'microsoft',
-  ElevenLabs = 'elevenlabs',
-}
-
-export interface TTSConfig {
-  vendor: TTSVendor;
-  params: MicrosoftTTSParams | ElevenLabsTTSParams;
-}
-
-// Agora API request body
-export interface AgoraStartRequest {
-  name: string;
-  properties: {
-    channel: string;
-    token: string;
-    agent_rtc_uid: string;
-    remote_rtc_uids: string[];
-    enable_string_uid?: boolean;
-    idle_timeout?: number;
-    advanced_features?: {
-      enable_aivad?: boolean;
-      enable_bhvs?: boolean;
-    };
-    asr: {
-      language: string;
-      task?: string;
-    };
-    llm: {
-      url?: string;
-      api_key?: string;
-      system_messages: Array<{
-        role: string;
-        content: string;
-      }>;
-      greeting_message: string;
-      failure_message: string;
-      max_history?: number;
-      input_modalities?: string[];
-      output_modalities?: string[];
-      params: {
-        model: string;
-        max_tokens: number;
-        temperature?: number;
-        top_p?: number;
-      };
-    };
-    vad: {
-      silence_duration_ms: number;
-      speech_duration_ms?: number;
-      threshold?: number;
-      interrupt_duration_ms?: number;
-      prefix_padding_ms?: number;
-    };
-    tts: TTSConfig;
-  };
-}
-
-export interface StopConversationRequest {
-  agent_id: string;
-}
-
-export interface AgentResponse {
-  agent_id: string;
-  create_ts: number;
-  state: string;
-}
-```
-
-These new types give some insight on all the parts we'll be assembling in the next steps. We'll take the client request, and use it to configure the AgoraStartRequest and send it to Agora's Conversational AI Engine. Agora's Convo AI engine will add the agent to the conversation.
-
 ### Invite Agent Route
 
-Create the route file at `app/api/invite-agent/route.ts`:
+The `agora-agent-server-sdk` simplifies agent creation by handling token generation and the Agora REST API internally. Create the route file at `app/api/invite-agent/route.ts`:
 
 ```bash
 mkdir app/api/invite-agent
@@ -923,203 +823,131 @@ touch app/api/invite-agent/route.ts
 Add the following code:
 
 ```typescript
-import { NextResponse } from 'next/server';
-import { RtcTokenBuilder, RtcRole } from 'agora-token';
+import { NextRequest, NextResponse } from 'next/server';
 import {
-  ClientStartRequest,
-  AgentResponse,
-  TTSVendor,
-} from '@/types/conversation';
+  AgoraClient,
+  Agent,
+  Area,
+  ExpiresIn,
+  OpenAI,
+  ElevenLabsTTS,
+  DeepgramSTT,
+} from 'agora-agent-server-sdk';
+import { ClientStartRequest, AgentResponse } from '@/types/conversation';
 
-// Helper function to validate and get all configuration
-function getValidatedConfig() {
-  // Validate Agora Configuration
-  const agoraConfig = {
-    baseUrl: process.env.NEXT_AGORA_CONVO_AI_BASE_URL || '',
-    appId: process.env.NEXT_PUBLIC_AGORA_APP_ID || '',
-    appCertificate: process.env.NEXT_AGORA_APP_CERTIFICATE || '',
-    customerId: process.env.NEXT_AGORA_CUSTOMER_ID || '',
-    customerSecret: process.env.NEXT_AGORA_CUSTOMER_SECRET || '',
-    agentUid: process.env.NEXT_AGENT_UID || 'Agent',
-  };
+// System prompt that defines the agent's personality and behavior
+const ADA_PROMPT = `You are **Ada**, a developer advocate AI from **Agora**. You help developers understand and build with Agora's Conversational AI platform. Respond concisely and naturally as if in a spoken conversation.`;
 
-  if (Object.values(agoraConfig).some((v) => v === '')) {
-    throw new Error('Missing Agora configuration. Check your .env.local file');
-  }
+// First thing the agent says when a user joins the channel.
+const GREETING = `Hi there! I'm Ada, your virtual assistant from Agora. What kind of project do you have in mind?`;
 
-  // Validate LLM Configuration
-  const llmConfig = {
-    url: process.env.NEXT_LLM_URL,
-    api_key: process.env.NEXT_LLM_API_KEY,
-    model: process.env.NEXT_LLM_MODEL,
-  };
-
-  // Get TTS Vendor
-  const ttsVendor =
-    (process.env.NEXT_TTS_VENDOR as TTSVendor) || TTSVendor.Microsoft;
-
-  // Get Modalities Configuration
-  const modalitiesConfig = {
-    input: process.env.NEXT_INPUT_MODALITIES?.split(',') || ['text'],
-    output: process.env.NEXT_OUTPUT_MODALITIES?.split(',') || [
-      'text',
-      'audio',
-    ],
-  };
-
-  return {
-    agora: agoraConfig,
-    llm: llmConfig,
-    ttsVendor,
-    modalities: modalitiesConfig,
-  };
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  return value;
 }
 
-// Helper function to get TTS configuration based on vendor
-function getTTSConfig(vendor: TTSVendor) {
-  if (vendor === TTSVendor.Microsoft) {
-    return {
-      vendor: TTSVendor.Microsoft,
-      params: {
-        key: process.env.NEXT_MICROSOFT_TTS_KEY,
-        region: process.env.NEXT_MICROSOFT_TTS_REGION,
-        voice_name:
-          process.env.NEXT_MICROSOFT_TTS_VOICE_NAME ||
-          'en-US-AriaNeural',
-        rate: parseFloat(process.env.NEXT_MICROSOFT_TTS_RATE || '1.0'),
-        volume: parseFloat(
-          process.env.NEXT_MICROSOFT_TTS_VOLUME || '100.0'
-        ),
-      },
-    };
-  } else if (vendor === TTSVendor.ElevenLabs) {
-    return {
-      vendor: TTSVendor.ElevenLabs,
-      params: {
-        key: process.env.NEXT_ELEVENLABS_API_KEY,
-        model_id: process.env.NEXT_ELEVENLABS_MODEL_ID,
-        voice_id: process.env.NEXT_ELEVENLABS_VOICE_ID,
-      },
-    };
-  }
+// Set these in .env.local (see env vars reference at end of guide)
+const appId =
+  process.env.NEXT_PUBLIC_AGORA_APP_ID || requireEnv('NEXT_AGORA_APP_ID');
+const appCertificate = requireEnv('NEXT_AGORA_APP_CERTIFICATE');
+// Must match NEXT_PUBLIC_AGENT_UID on the client
+const agentUid = process.env.NEXT_PUBLIC_AGENT_UID || 'Agent';
+// Any OpenAI-compatible endpoint (OpenAI, Azure, Groq, etc.)
+const llmUrl = requireEnv('NEXT_LLM_URL');
+const llmApiKey = requireEnv('NEXT_LLM_API_KEY');
+const deepgramApiKey = requireEnv('NEXT_DEEPGRAM_API_KEY');
+const elevenLabsApiKey = requireEnv('NEXT_ELEVENLABS_API_KEY');
+// Find your voice at https://elevenlabs.io/app/voice-lab
+const ELEVENLABS_VOICE_ID = 'cgSgspJ2msm6clMCkdW9';
 
-  throw new Error(`Unsupported TTS vendor: ${vendor}`);
-}
-
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    // Get our configuration
-    const config = getValidatedConfig();
     const body: ClientStartRequest = await request.json();
-    const { requester_id, channel_name, input_modalities, output_modalities } =
-      body;
+    const { requester_id, channel_name } = body;
 
-    // Generate a unique token for the AI agent
-    const timestamp = Date.now();
-    const expirationTime = Math.floor(timestamp / 1000) + 3600;
-
-    const token = RtcTokenBuilder.buildTokenWithUid(
-      config.agora.appId,
-      config.agora.appCertificate,
-      channel_name,
-      config.agora.agentUid,
-      RtcRole.PUBLISHER,
-      expirationTime,
-      expirationTime
-    );
-
-    // Check if we're using string UIDs
-    const isStringUID = (str: string) => /[a-zA-Z]/.test(str);
-
-    // Create a descriptive name for this conversation
-    const uniqueName = `conversation-${timestamp}-${Math.random()
-      .toString(36)
-      .substring(2, 8)}`;
-
-    // Get the appropriate TTS configuration
-    const ttsConfig = getTTSConfig(config.ttsVendor);
-
-    // Prepare the request to the Agora Conversational AI API
-    const requestBody = {
-      name: uniqueName,
-      properties: {
-        channel: channel_name,
-        token: token,
-        agent_rtc_uid: config.agora.agentUid,
-        remote_rtc_uids: [requester_id],
-        enable_string_uid: isStringUID(config.agora.agentUid),
-        idle_timeout: 30,
-        // ASR (Automatic Speech Recognition) settings
-        asr: {
-          language: 'en-US',
-          task: 'conversation',
-        },
-        // LLM (Large Language Model) settings
-        llm: {
-          url: config.llm.url,
-          api_key: config.llm.api_key,
-          system_messages: [
-            {
-              role: 'system',
-              content:
-                'You are a helpful assistant. Respond concisely and naturally as if in a spoken conversation.',
-            },
-          ],
-          greeting_message: 'Hello! How can I assist you today?',
-          failure_message: 'Please wait a moment while I process that.',
-          max_history: 10,
-          params: {
-            model: config.llm.model || 'gpt-3.5-turbo',
-            max_tokens: 1024,
-            temperature: 0.7,
-            top_p: 0.95,
-          },
-          input_modalities: input_modalities || config.modalities.input,
-          output_modalities: output_modalities || config.modalities.output,
-        },
-        // VAD (Voice Activity Detection) settings
-        vad: {
-          silence_duration_ms: 480,
-          speech_duration_ms: 15000,
-          threshold: 0.5,
-          interrupt_duration_ms: 160,
-          prefix_padding_ms: 300,
-        },
-        // TTS (Text-to-Speech) settings
-        tts: ttsConfig,
-      },
-    };
-
-    // Send the request to the Agora API
-    const response = await fetch(
-      `${config.agora.baseUrl}/${config.agora.appId}/join`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Basic ${Buffer.from(
-            `${config.agora.customerId}:${config.agora.customerSecret}`
-          ).toString('base64')}`,
-        },
-        body: JSON.stringify(requestBody),
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Agent start response:', {
-        status: response.status,
-        body: errorText,
-      });
-      throw new Error(
-        `Failed to start conversation: ${response.status} ${errorText}`
+    if (!channel_name || !requester_id) {
+      return NextResponse.json(
+        { error: 'channel_name and requester_id are required' },
+        { status: 400 },
       );
     }
 
-    // Parse and return the response, which includes the agentID.
-    // We'll need the agentID later, when its time to remove the agent.
-    const data: AgentResponse = await response.json();
-    return NextResponse.json(data);
+    // Authenticates API calls to the Agora Conversational AI service
+    const client = new AgoraClient({
+      area: Area.US,
+      appId,
+      appCertificate,
+    });
+
+    const agent = new Agent({
+      name: `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+      instructions: ADA_PROMPT,
+      greeting: GREETING,
+      failureMessage: 'Please wait a moment.',
+      maxHistory: 50,
+      // VAD: controls how the agent detects the start and end of a user's turn
+      turnDetection: {
+        config: {
+          speech_threshold: 0.5,
+          start_of_speech: {
+            mode: 'vad',
+            vad_config: {
+              interrupt_duration_ms: 160,
+              prefix_padding_ms: 300,
+            },
+          },
+          end_of_speech: {
+            mode: 'vad',
+            vad_config: { silence_duration_ms: 480 },
+          },
+        },
+      },
+      // RTM needed for transcript events; enable_tools for MCP
+      advancedFeatures: { enable_rtm: true, enable_tools: true },
+    })
+      .withStt(
+        new DeepgramSTT({
+          apiKey: deepgramApiKey,
+          model: 'nova-3',
+          language: 'en',
+        }),
+      )
+      .withLlm(
+        new OpenAI({
+          url: llmUrl,
+          apiKey: llmApiKey,
+          model: 'gpt-4o',
+          greetingMessage: GREETING,
+          failureMessage: 'Please wait a moment.',
+          maxHistory: 15,
+          params: { max_tokens: 1024, temperature: 0.7, top_p: 0.95 },
+        }),
+      )
+      .withTts(
+        new ElevenLabsTTS({
+          key: elevenLabsApiKey,
+          modelId: 'eleven_flash_v2_5',
+          voiceId: ELEVENLABS_VOICE_ID,
+        }),
+      );
+
+    // remoteUids restricts the agent to only process audio from this user
+    const session = agent.createSession(client, {
+      channel: channel_name,
+      agentUid,
+      remoteUids: [requester_id],
+      idleTimeout: 30,
+      expiresIn: ExpiresIn.hours(1),
+    });
+
+    const agentId = await session.start();
+
+    return NextResponse.json({
+      agent_id: agentId,
+      create_ts: Math.floor(Date.now() / 1000),
+      state: 'RUNNING',
+    } as AgentResponse);
   } catch (error) {
     console.error('Error starting conversation:', error);
     return NextResponse.json(
@@ -1129,25 +957,19 @@ export async function POST(request: Request) {
             ? error.message
             : 'Failed to start conversation',
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 ```
 
-Since Agora supports multiple TTS providers, the TTS section includes the configuration for both Microsoft Azure TTS and ElevenLabs and uses the `TTSVendor` env variable to determine which TTS config to use.
+The SDK supports multiple STT, LLM, and TTS providers. This example uses Deepgram for speech-to-text, OpenAI for the LLM, and ElevenLabs for text-to-speech. You can swap these for other vendors supported by the SDK.
 
-Choose the TTS provider based on your needs. Once you choose a vendor, you'll also need to choose a voice. To help you get started, here are some links to the voice galleries for each provider:
-
-- [Microsoft Azure TTS Voice Gallery](https://speech.microsoft.com/portal/voicegallery): Offers a wide range of natural-sounding voices.
-
-- [ElevenLabs Voice Library](https://elevenlabs.io/voice-library): Known for highly realistic and emotional voices.
-
-> **Note:** This route loads a number of environment variables. Make sure to set these in your `.env.local` file. At the end of this guide, I've included a list of all the environment variables you'll need to set.
+> **Note:** Set all required environment variables in your `.env.local` file. See the environment variables reference at the end of this guide.
 
 ### Stop Conversation Route
 
-After the agent joins the conversation, we need a way to remove them from the conversation. This is where the `stop-conversation` route comes in, it takes the agentID and sends a request to the Agora's Conversational AI Engine to remove the agent from the channel.
+After the agent joins the conversation, we need a way to remove them. The `stop-conversation` route uses the `agora-agent-server-sdk` to stop the agent.
 
 Create a file at `app/api/stop-conversation/route.ts`:
 
@@ -1160,61 +982,36 @@ Add the following code:
 
 ```typescript
 import { NextResponse } from 'next/server';
+import { AgoraClient, Area } from 'agora-agent-server-sdk';
 import { StopConversationRequest } from '@/types/conversation';
-
-// Helper function to validate and get Agora configuration
-function getValidatedConfig() {
-  const agoraConfig = {
-    baseUrl: process.env.NEXT_AGORA_CONVO_AI_BASE_URL,
-    appId: process.env.NEXT_PUBLIC_AGORA_APP_ID || '',
-    customerId: process.env.NEXT_AGORA_CUSTOMER_ID || '',
-    customerSecret: process.env.NEXT_AGORA_CUSTOMER_SECRET || '',
-  };
-
-  if (Object.values(agoraConfig).some((v) => !v || v.trim() === '')) {
-    throw new Error('Missing Agora configuration. Check your .env.local file');
-  }
-
-  return agoraConfig;
-}
 
 export async function POST(request: Request) {
   try {
-    const config = getValidatedConfig();
     const body: StopConversationRequest = await request.json();
     const { agent_id } = body;
 
     if (!agent_id) {
-      throw new Error('agent_id is required');
-    }
-
-    // Create authentication header
-    const plainCredential = `${config.customerId}:${config.customerSecret}`;
-    const encodedCredential = Buffer.from(plainCredential).toString('base64');
-    const authorizationHeader = `Basic ${encodedCredential}`;
-
-    // Send request to Agora API to stop the conversation
-    const response = await fetch(
-      `${config.baseUrl}/${config.appId}/agents/${agent_id}/leave`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: authorizationHeader,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Agent stop response:', {
-        status: response.status,
-        body: errorText,
-      });
-      throw new Error(
-        `Failed to stop conversation: ${response.status} ${errorText}`
+      return NextResponse.json(
+        { error: 'agent_id is required' },
+        { status: 400 },
       );
     }
+
+    const appId =
+      process.env.NEXT_PUBLIC_AGORA_APP_ID || process.env.NEXT_AGORA_APP_ID;
+    const appCertificate = process.env.NEXT_AGORA_APP_CERTIFICATE;
+    if (!appId || !appCertificate) {
+      throw new Error(
+        'Missing Agora configuration. Set NEXT_PUBLIC_AGORA_APP_ID and NEXT_AGORA_APP_CERTIFICATE.',
+      );
+    }
+
+    const client = new AgoraClient({
+      area: Area.US,
+      appId,
+      appCertificate,
+    });
+    await client.stopAgent(agent_id);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -1226,168 +1023,31 @@ export async function POST(request: Request) {
             ? error.message
             : 'Failed to stop conversation',
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 ```
 
-## Update the Client to Start and Stop the AI Agent
+## Add the Agora UI Kit and Toolkit
 
-The landing page flow (inviting the agent and handling `onEndConversation` with the stop-conversation API) is already covered in the "Updating the Landing Page to Request Tokens" section above. When the user clicks "Try it now!", the app fetches a token, invites the AI agent, and shows the conversation. The `onEndConversation` callback stops the agent via the API before hiding the conversation.
+Rather than building custom microphone buttons and audio visualizers from scratch, Agora provides two packages that handle the UI and transcript logic for you:
 
-### Creating a Microphone Button Component
+- **`agora-agent-uikit`** — pre-built components: `AudioVisualizer`, `MicButtonWithVisualizer`, `ConvoTextStream`
+- **`agora-agent-client-toolkit`** — `AgoraVoiceAI` class that subscribes to RTM transcript events and normalizes them into a simple message list
 
-The microphone button is an essential element of any audio-first UI. Create a button component with audio visualization that allows users to control their microphone.
+Both packages are already installed. Now we'll wire them into the `ConversationComponent`.
 
-Create a file at `components/MicrophoneButton.tsx`:
+### How the Transcript System Works
 
-```bash
-touch components/MicrophoneButton.tsx
-```
+When the AI agent speaks (or the user speaks), the Agora Conversational AI Engine sends transcript updates over RTM. The flow is:
 
-Add the following code (includes audio visualization bars and unpublish/publish for proper track management):
+1. The agent is configured with `enable_rtm: true` (done in the invite-agent route above)
+2. On the client, `AgoraVoiceAI.init()` connects to the RTM channel and listens for these events
+3. It fires a `TRANSCRIPT_UPDATED` event with a normalized list of transcript items
+4. We convert those items into a message list and pass them to `ConvoTextStream` for display
 
-```typescript
-'use client';
-
-import React, { useState, useEffect, useRef } from 'react';
-import { useRTCClient, IMicrophoneAudioTrack } from 'agora-rtc-react';
-import { Mic, MicOff } from 'lucide-react';
-
-interface AudioBar {
-  height: number;
-}
-
-interface MicrophoneButtonProps {
-  isEnabled: boolean;
-  setIsEnabled: (enabled: boolean) => void;
-  localMicrophoneTrack: IMicrophoneAudioTrack | null;
-}
-
-export function MicrophoneButton({
-  isEnabled,
-  setIsEnabled,
-  localMicrophoneTrack,
-}: MicrophoneButtonProps) {
-  const [audioData, setAudioData] = useState<AudioBar[]>(Array(5).fill({ height: 0 }));
-  const client = useRTCClient();
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const animationFrameRef = useRef<number>();
-
-  useEffect(() => {
-    if (localMicrophoneTrack && isEnabled) {
-      setupAudioAnalyser();
-    } else {
-      cleanupAudioAnalyser();
-    }
-    return () => cleanupAudioAnalyser();
-  }, [localMicrophoneTrack, isEnabled]);
-
-  const setupAudioAnalyser = async () => {
-    if (!localMicrophoneTrack) return;
-    try {
-      audioContextRef.current = new AudioContext();
-      analyserRef.current = audioContextRef.current.createAnalyser();
-      analyserRef.current.fftSize = 64;
-      analyserRef.current.smoothingTimeConstant = 0.5;
-      const mediaStream = localMicrophoneTrack.getMediaStreamTrack();
-      const source = audioContextRef.current.createMediaStreamSource(new MediaStream([mediaStream]));
-      source.connect(analyserRef.current);
-      updateAudioData();
-    } catch (error) {
-      console.error('Error setting up audio analyser:', error);
-    }
-  };
-
-  const cleanupAudioAnalyser = () => {
-    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-    setAudioData(Array(5).fill({ height: 0 }));
-  };
-
-  const updateAudioData = () => {
-    if (!analyserRef.current) return;
-    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-    analyserRef.current.getByteFrequencyData(dataArray);
-    const segmentSize = Math.floor(dataArray.length / 5);
-    const newAudioData = Array(5).fill(0).map((_, index) => {
-      const start = index * segmentSize;
-      const end = start + segmentSize;
-      const average = dataArray.slice(start, end).reduce((a, b) => a + b, 0) / segmentSize;
-      const scaledHeight = Math.min(60, (average / 255) * 100 * 1.2);
-      return { height: Math.pow(scaledHeight / 60, 0.7) * 60 };
-    });
-    setAudioData(newAudioData);
-    animationFrameRef.current = requestAnimationFrame(updateAudioData);
-  };
-
-  const toggleMicrophone = async () => {
-    if (localMicrophoneTrack) {
-      const newState = !isEnabled;
-      try {
-        await localMicrophoneTrack.setEnabled(newState);
-        if (!newState) {
-          await client.unpublish(localMicrophoneTrack);
-        } else {
-          await client.publish(localMicrophoneTrack);
-        }
-        setIsEnabled(newState);
-        console.log('Microphone state updated successfully');
-      } catch (error) {
-        console.error('Failed to toggle microphone:', error);
-        localMicrophoneTrack.setEnabled(isEnabled);
-      }
-    }
-  };
-
-  return (
-    <button
-      onClick={toggleMicrophone}
-      className="group relative w-16 h-16 rounded-full shadow-lg flex items-center justify-center transition-all duration-300"
-      style={{
-        backgroundColor: 'transparent',
-        border: `2px solid ${isEnabled ? '#A0FAFF' : '#DE344A'}`,
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = isEnabled ? '#A0FAFF' : '#DE344A';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = 'transparent';
-      }}
-      aria-label={isEnabled ? 'Mute microphone' : 'Unmute microphone'}
-    >
-      <div className="absolute inset-0 flex items-center justify-center gap-1">
-        {audioData.map((bar, index) => (
-          <div
-            key={index}
-            className="w-1 rounded-full transition-all duration-100 group-hover:!bg-black"
-            style={{
-              height: `${bar.height}%`,
-              backgroundColor: isEnabled ? '#A0FAFF' : '#DE344A',
-              transform: `scaleY(${Math.max(0.1, bar.height / 100)})`,
-              transformOrigin: 'center',
-            }}
-          />
-        ))}
-      </div>
-      <div className="relative z-10 group-hover:text-black transition-colors duration-300">
-        {isEnabled ? (
-          <Mic size={24} style={{ color: '#A0FAFF' }} className="group-hover:!text-black transition-colors duration-300" />
-        ) : (
-          <MicOff size={24} style={{ color: '#DE344A' }} className="group-hover:!text-black transition-colors duration-300" />
-        )}
-      </div>
-    </button>
-  );
-}
-```
-
-### Creating a Microphone Selector Component (Optional)
+### Microphone Selector (Optional)
 
 When users have multiple microphones, a device selector improves the experience. Create `components/MicrophoneSelector.tsx`:
 
@@ -1395,293 +1055,17 @@ When users have multiple microphones, a device selector improves the experience.
 touch components/MicrophoneSelector.tsx
 ```
 
-The component uses `AgoraRTC.getMicrophones()` to list devices, shows a dropdown when multiple devices exist, and supports hot-swap when devices are plugged/unplugged. It only renders when `devices.length > 1`. See the implementation in `components/MicrophoneSelector.tsx` for the full code using shadcn `DropdownMenu` and `Button`.
+This component uses `AgoraRTC.getMicrophones()` to list devices, shows a dropdown when multiple devices exist, and supports hot-swap when devices are plugged/unplugged. It only renders when there is more than one microphone. See the implementation in `components/MicrophoneSelector.tsx` in the companion repository for the full code using shadcn `DropdownMenu`.
 
-### Updating the Conversation Component
+### Complete ConversationComponent
 
-Update the conversation component to include the microphone button, optional microphone selector, and End Conversation control:
-
-```typescript
-// Previous imports remain the same as before...
-import { MicrophoneButton } from './MicrophoneButton';
-import { MicrophoneSelector } from './MicrophoneSelector';
-import { AudioVisualizer } from './AudioVisualizer';
-import ConvoTextStream from './ConvoTextStream';
-import type { ConversationComponentProps } from '../types/conversation';
-
-export default function ConversationComponent({
-  agoraData,
-  onTokenWillExpire,
-  onEndConversation,
-}: ConversationComponentProps) {
-  // ... state: isEnabled, joinedUID, agentUID, isAgentConnected, isConnecting,
-  //     messageList, currentInProgressMessage (from ConversationalAIAPI - see TEXT_STREAMING_GUIDE) ...
-
-  // Handle remote user events - ie when AI agent joins/leaves
-  useClientEvent(client, 'user-joined', (user) => {
-    console.log('Remote user joined:', user.uid);
-    if (user.uid.toString() === agentUID) {
-      setIsAgentConnected(true);
-      setIsConnecting(false);
-    }
-  });
-
-  useClientEvent(client, 'user-left', (user) => {
-    console.log('Remote user left:', user.uid);
-    if (user.uid.toString() === agentUID) {
-      setIsAgentConnected(false);
-      setIsConnecting(false);
-    }
-  });
-
-  // Sync isAgentConnected with remoteUsers
-  useEffect(() => {
-    const isAgentInRemoteUsers = remoteUsers.some(
-      (user) => user.uid.toString() === agentUID
-    );
-    setIsAgentConnected(isAgentInRemoteUsers);
-  }, [remoteUsers, agentUID]);
-
-  // Connection state changes
-  useClientEvent(client, 'connection-state-change', (curState, prevState) => {
-    console.log(`Connection state changed from ${prevState} to ${curState}`);
-
-    if (curState === 'DISCONNECTED') {
-      console.log('Attempting to reconnect...');
-    }
-  });
-
-  return (
-    <div className="flex flex-col gap-6 p-4 h-full">
-      {/* Connection Status - End Conversation always visible */}
-      <div className="absolute top-4 right-4 flex items-center gap-2">
-        <button
-          onClick={onEndConversation}
-          className="px-4 py-2 bg-transparent text-red-500 rounded-full border border-red-500 backdrop-blur-sm
-          hover:bg-red-500 hover:text-black transition-all duration-300 shadow-lg hover:shadow-red-500/20 text-sm font-medium"
-        >
-          End Conversation
-        </button>
-        <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-      </div>
-
-      {/* Remote Users with Audio Visualizer */}
-      <div className="flex-1">
-        {remoteUsers.map((user) => (
-          <div key={user.uid}>
-            <AudioVisualizer track={user.audioTrack} />
-            <RemoteUser user={user} />
-          </div>
-        ))}
-        {remoteUsers.length === 0 && (
-          <div className="text-center text-gray-500 py-8">
-            Waiting for AI agent to join...
-          </div>
-        )}
-      </div>
-
-      {/* Local Controls - Fixed at bottom center */}
-      <div className="fixed bottom-14 md:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3">
-        <MicrophoneButton
-          isEnabled={isEnabled}
-          setIsEnabled={setIsEnabled}
-          localMicrophoneTrack={localMicrophoneTrack}
-        />
-        <MicrophoneSelector localMicrophoneTrack={localMicrophoneTrack} />
-      </div>
-
-      {/* Conversation Text Stream component - see TEXT_STREAMING_GUIDE.md for setup */}
-      <ConvoTextStream
-        messageList={messageList}
-        currentInProgressMessage={currentInProgressMessage}
-        agentUID={agentUID}
-      />
-    </div>
-  );
-}
-```
-
-The agent is invited by the landing page when the user clicks "Try it now!". For text streaming (transcriptions), the app uses `ConversationalAIAPI` with RTM—see [TEXT_STREAMING_GUIDE.md](./TEXT_STREAMING_GUIDE.md) for setup. When using RTM, the token renewal handler must also renew the RTM token. The `onEndConversation` callback (passed from the landing page) stops the agent via the API before hiding the conversation.
-
-## Audio Visualization (Optional)
-
-Let's add an audio visualization to give visual feedback to the user when the AI agent is speaking. Here's an example of an audio visualizer component, that takes the Agora audio track as input for the animation.
-
-Create a file at `components/AudioVisualizer.tsx`:
-
-```bash
-touch components/AudioVisualizer.tsx
-```
-
-Add the following code:
+Here is the full updated `ConversationComponent` using the toolkit and uikit:
 
 ```typescript
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import { ILocalAudioTrack, IRemoteAudioTrack } from 'agora-rtc-react';
-
-interface AudioVisualizerProps {
-  track: ILocalAudioTrack | IRemoteAudioTrack | undefined;
-}
-
-export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ track }) => {
-  const [isVisualizing, setIsVisualizing] = useState(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const animationFrameRef = useRef<number>();
-  const barsRef = useRef<(HTMLDivElement | null)[]>([]);
-
-  const animate = () => {
-    if (!analyserRef.current) {
-      return;
-    }
-
-    const bufferLength = analyserRef.current.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-    analyserRef.current.getByteFrequencyData(dataArray);
-
-    // Define frequency ranges for different bars to create a more appealing visualization
-    const frequencyRanges = [
-      [24, 31], // Highest (bar 0, 8)
-      [16, 23], // Mid-high (bar 1, 7)
-      [8, 15], // Mid (bar 2, 6)
-      [4, 7], // Low-mid (bar 3, 5)
-      [0, 3], // Lowest (bar 4 - center)
-    ];
-
-    barsRef.current.forEach((bar, index) => {
-      if (!bar) {
-        return;
-      }
-
-      // Use symmetrical ranges for the 9 bars
-      const rangeIndex = index < 5 ? index : 8 - index;
-      const [start, end] = frequencyRanges[rangeIndex];
-
-      // Calculate average energy in this frequency range
-      let sum = 0;
-      for (let i = start; i <= end; i++) {
-        sum += dataArray[i];
-      }
-      let average = sum / (end - start + 1);
-
-      // Apply different multipliers to create a more appealing shape
-      const multipliers = [0.7, 0.8, 0.85, 0.9, 0.95];
-      const multiplierIndex = index < 5 ? index : 8 - index;
-      average *= multipliers[multiplierIndex];
-
-      // Scale and limit the height
-      const height = Math.min((average / 255) * 100, 100);
-      bar.style.height = `${height}px`;
-    });
-
-    animationFrameRef.current = requestAnimationFrame(animate);
-  };
-
-  useEffect(() => {
-    if (!track) {
-      return;
-    }
-
-    const startVisualizer = async () => {
-      try {
-        audioContextRef.current = new AudioContext();
-        analyserRef.current = audioContextRef.current.createAnalyser();
-        analyserRef.current.fftSize = 64; // Keep this small for performance
-
-        // Get the audio track from Agora
-        const mediaStreamTrack = track.getMediaStreamTrack();
-        const stream = new MediaStream([mediaStreamTrack]);
-
-        // Connect it to our analyzer
-        const source = audioContextRef.current.createMediaStreamSource(stream);
-        source.connect(analyserRef.current);
-
-        setIsVisualizing(true);
-        animate();
-      } catch (error) {
-        console.error('Error starting visualizer:', error);
-      }
-    };
-
-    startVisualizer();
-
-    // Clean up when component unmounts or track changes
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-    };
-  }, [track]);
-
-  return (
-    <div className="w-full h-40 rounded-lg overflow-hidden flex items-center justify-center relative">
-      <div className="flex items-center space-x-2 h-[100px] relative z-10">
-        {/* Create 9 bars for the visualizer */}
-        {[...Array(9)].map((_, index) => (
-          <div
-            key={index}
-            ref={(el) => {
-              barsRef.current[index] = el;
-            }}
-            className="w-3 bg-gradient-to-t from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-75"
-            style={{
-              height: '2px',
-              minHeight: '2px',
-              background: 'linear-gradient(to top, #3b82f6, #8b5cf6, #ec4899)',
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
-```
-
-The visualizer works by:
-
-1. Taking an audio track from the Agora SDK through the `track` prop
-
-2. Extracting frequency data from the audio stream using the Web Audio API
-
-3. Rendering visual bars that respond to different frequency ranges in the audio
-
-To use this visualizer with the remote user's audio track, we need to update how we render the `RemoteUser` in the `ConversationComponent`:
-
-```typescript
-// Inside the remoteUsers.map in ConversationComponent.tsx:
-{
-  remoteUsers.map((user) => (
-    <div key={user.uid} className="mb-4">
-      {/* Add the audio visualizer for the remote user */}
-      <AudioVisualizer track={user.audioTrack} />
-      <p className="text-center text-sm text-gray-400 mb-2">
-        {user.uid.toString() === agentUID ? 'AI Agent' : `User: ${user.uid}`}
-      </p>
-      <RemoteUser user={user} />
-    </div>
-  ));
-}
-```
-
-### Integrating the Audio Visualizer
-
-To integrate/wire-in the audio visualizer with our conversation component, we need to:
-
-1. Import the AudioVisualizer component
-2. Pass the appropriate audio track to it
-3. Position it in our UI
-
-Update your `ConversationComponent.tsx` to include the audio visualizer:
-
-```typescript
-'use client';
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { setParameter } from 'agora-rtc-sdk-ng/esm';
 import {
   useRTCClient,
   useLocalMicrophoneTrack,
@@ -1693,64 +1077,330 @@ import {
   RemoteUser,
   UID,
 } from 'agora-rtc-react';
-import { MicrophoneButton } from './MicrophoneButton';
-import { AudioVisualizer } from './AudioVisualizer';
-import type {
-  ConversationComponentProps,
-  ClientStartRequest,
-  StopConversationRequest,
-} from '../types/conversation';
+import {
+  AgoraVoiceAI,
+  AgoraVoiceAIEvents,
+  TranscriptHelperMode,
+  TurnStatus,
+  type TranscriptHelperItem,
+  type UserTranscription,
+  type AgentTranscription,
+} from 'agora-agent-client-toolkit';
+import {
+  AudioVisualizer,
+  ConvoTextStream,
+  transcriptToMessageList,
+} from 'agora-agent-uikit';
+import { MicButtonWithVisualizer } from 'agora-agent-uikit/rtc';
+import { MicrophoneSelector } from './MicrophoneSelector';
+import type { ConversationComponentProps, ClientStartRequest } from '@/types/conversation';
 
-// Rest of the component as before...
+type ToolkitMessage = TranscriptHelperItem<Partial<UserTranscription | AgentTranscription>>;
 
-// Then in the render method:
-return (
-  <div className="flex flex-col gap-6 p-4 h-full relative">
-    {/* Connection Status */}
-    {/* ... */}
+export default function ConversationComponent({
+  agoraData,
+  rtmClient,
+  onTokenWillExpire,
+  onEndConversation,
+}: ConversationComponentProps) {
+  const client = useRTCClient();
+  const isConnected = useIsConnected();
+  const remoteUsers = useRemoteUsers();
+  const [isEnabled, setIsEnabled] = useState(true);
+  const [isAgentConnected, setIsAgentConnected] = useState(false);
+  const agentUID = process.env.NEXT_PUBLIC_AGENT_UID;
+  const [activeAgentId, setActiveAgentId] = useState<string | undefined>(agoraData.agentId);
+  const [joinedUID, setJoinedUID] = useState<UID>(0);
 
-    {/* Remote Users Section with Audio Visualizer */}
-    <div className="flex-1">
-      {remoteUsers.map((user) => (
-        <div key={user.uid} className="mb-8 p-4 bg-gray-800/30 rounded-lg">
-          <p className="text-center text-sm text-gray-400 mb-2">
-            {user.uid.toString() === agentUID
-              ? 'AI Agent'
-              : `User: ${user.uid}`}
-          </p>
+  // StrictMode guard: delay useJoin's ready flag until after the fake-unmount
+  // cycle completes. React StrictMode fires cleanup synchronously before any
+  // setTimeout callback, so the first (fake) mount's timeout is always cancelled.
+  // Only the real second mount's timeout fires, meaning useJoin joins exactly once.
+  const [isReady, setIsReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const id = setTimeout(() => {
+      if (!cancelled) setIsReady(true);
+    }, 0);
+    return () => {
+      cancelled = true;
+      clearTimeout(id);
+      setIsReady(false);
+    };
+  }, []);
 
-          {/* The AudioVisualizer receives the remote user's audio track */}
-          <AudioVisualizer track={user.audioTrack} />
+  const { isConnected: joinSuccess } = useJoin(
+    {
+      appid: process.env.NEXT_PUBLIC_AGORA_APP_ID!,
+      channel: agoraData.channel,
+      token: agoraData.token,
+      uid: parseInt(agoraData.uid, 10) || 0,
+    },
+    isReady
+  );
 
-          {/* The RemoteUser component handles playing the audio */}
-          <RemoteUser user={user} />
-        </div>
-      ))}
+  // Create mic track only after the StrictMode cycle completes (isReady).
+  // Passing true here creates two tracks in StrictMode — the first publishes,
+  // then StrictMode cleanup closes it and the second takes over, causing an
+  // audio gap. Do NOT pass isEnabled — that ties track lifetime to mute state
+  // and breaks the Web Audio graph. Mute uses track.setEnabled() only.
+  const { localMicrophoneTrack } = useLocalMicrophoneTrack(isReady);
 
-      {remoteUsers.length === 0 && (
-        <div className="text-center text-gray-500 py-8">
-          {isConnected
-            ? 'Waiting for AI agent to join...'
-            : 'Connecting to channel...'}
-        </div>
-      )}
-    </div>
+  // ENABLE_AUDIO_PTS is a module-level SDK parameter (not on the client instance).
+  // It must be set before publishing audio for transcript timing to be accurate.
+  useEffect(() => {
+    if (!client) return;
+    try {
+      setParameter('ENABLE_AUDIO_PTS', true);
+    } catch (error) {
+      console.warn('Could not set ENABLE_AUDIO_PTS:', error);
+    }
+  }, [client]);
 
-    {/* Microphone Control */}
-    <div className="fixed bottom-8 left-1/2 -translate-x-1/2">
-      <MicrophoneButton
-        isEnabled={isEnabled}
-        setIsEnabled={setIsEnabled}
-        localMicrophoneTrack={localMicrophoneTrack}
+  // Capture the RTC-assigned UID for token renewal and agent invite
+  useEffect(() => {
+    if (joinSuccess && client) {
+      setJoinedUID(client.uid as UID);
+      console.log('Join successful, using UID:', client.uid);
+    }
+  }, [joinSuccess, client]);
+
+  // --- Transcript via AgoraVoiceAI ---
+  //
+  // Initialized imperatively after joinSuccess rather than in a mount effect.
+  // StrictMode double-mounts on the initial render when joinSuccess is still
+  // false, so the guard fires before any init happens. By the time joinSuccess
+  // flips to true StrictMode's fake-unmount cycle is done and init runs once.
+  const voiceAIRef = useRef<AgoraVoiceAI | null>(null);
+  const [transcript, setTranscript] = useState<ToolkitMessage[]>([]);
+
+  useEffect(() => {
+    if (!joinSuccess || !client) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const ai = await AgoraVoiceAI.init({
+          rtcEngine: client,
+          rtmConfig: { rtmEngine: rtmClient },
+          renderMode: TranscriptHelperMode.TEXT,
+          enableLog: true,
+        });
+
+        if (cancelled) {
+          try { ai.destroy(); } catch { /* ignore */ }
+          return;
+        }
+
+        voiceAIRef.current = ai;
+        ai.on(AgoraVoiceAIEvents.TRANSCRIPT_UPDATED, (messages) => {
+          if (cancelled) return;
+          // The toolkit uses uid="0" as a sentinel for the local user's speech.
+          // The uikit treats uid===0 as an AI message, so we replace it with
+          // the actual RTC UID so user transcripts render on the correct side.
+          const localUID = String(client.uid);
+          const remapped = messages.map((m) =>
+            m.uid === '0' ? { ...m, uid: localUID } : m
+          );
+          setTranscript(remapped as ToolkitMessage[]);
+        });
+        ai.subscribeMessage(agoraData.channel);
+        console.log('[ConversationalAI] toolkit connected, listening for transcripts');
+      } catch (error) {
+        if (!cancelled) console.error('[ConversationalAI] init error:', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      const ai = voiceAIRef.current;
+      if (ai) {
+        try { ai.unsubscribe(); ai.destroy(); } catch { /* ignore */ }
+        voiceAIRef.current = null;
+      }
+      setTranscript([]);
+    };
+    // client and rtmClient are stable for the component lifetime.
+    // agoraData.channel is fixed per session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [joinSuccess]);
+
+  // Completed (END + INTERRUPTED) messages shown as history.
+  // INTERRUPTED must be included — if the agent's first turn is cut off,
+  // messageList stays empty and ConvoTextStream never auto-opens.
+  const messageList = useMemo(
+    () =>
+      transcriptToMessageList(
+        transcript.filter((m) => m.status !== TurnStatus.IN_PROGRESS)
+      ),
+    [transcript]
+  );
+
+  const currentInProgressMessage = useMemo(() => {
+    const m = transcript.find((x) => x.status === TurnStatus.IN_PROGRESS);
+    return m ? transcriptToMessageList([m])[0] ?? null : null;
+  }, [transcript]);
+
+  // Publish local mic once the track exists; usePublish waits for RTC connection.
+  usePublish([localMicrophoneTrack]);
+
+  useClientEvent(client, 'user-joined', (user) => {
+    console.log('Remote user joined:', user.uid);
+    if (user.uid.toString() === agentUID) setIsAgentConnected(true);
+  });
+
+  useClientEvent(client, 'user-left', (user) => {
+    console.log('Remote user left:', user.uid);
+    if (user.uid.toString() === agentUID) setIsAgentConnected(false);
+  });
+
+  // Sync isAgentConnected with remoteUsers (covers cases where user-joined/left are missed)
+  useEffect(() => {
+    setIsAgentConnected(
+      remoteUsers.some((user) => user.uid.toString() === agentUID)
+    );
+  }, [remoteUsers, agentUID]);
+
+  useClientEvent(client, 'connection-state-change', (curState, prevState) => {
+    console.log(`Connection state changed from ${prevState} to ${curState}`);
+  });
+
+  /**
+   * Mute/unmute via track.setEnabled() only — usePublish owns publish state.
+   * If we also unpublish in the toggle, usePublish and the button fight each other
+   * and break the MicButtonWithVisualizer Web Audio graph.
+   */
+  const handleMicToggle = useCallback(async () => {
+    const next = !isEnabled;
+    const track = localMicrophoneTrack;
+    if (!track) {
+      setIsEnabled(next);
+      return;
+    }
+    try {
+      await track.setEnabled(next);
+      setIsEnabled(next);
+      if (next && !isAgentConnected) {
+        // If mic is re-enabled and agent isn't connected yet, invite them
+        await handleStartConversation();
+      }
+    } catch (error) {
+      console.error('Failed to toggle microphone:', error);
+    }
+  }, [isEnabled, localMicrophoneTrack, isAgentConnected]);
+
+  const handleStartConversation = useCallback(async () => {
+    if (!activeAgentId) return;
+    try {
+      const startRequest: ClientStartRequest = {
+        requester_id: joinedUID?.toString(),
+        channel_name: agoraData.channel,
+      };
+      const response = await fetch('/api/invite-agent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(startRequest),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to start conversation: ${response.statusText}`);
+      }
+      const data = await response.json();
+      if (data.agent_id) setActiveAgentId(data.agent_id);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.warn('Error starting conversation:', error.message);
+      }
+    }
+  }, [activeAgentId, joinedUID, agoraData.channel]);
+
+  // Token renewal — also renews the RTM token (both share the same token)
+  const handleTokenWillExpire = useCallback(async () => {
+    if (!onTokenWillExpire || !joinedUID) return;
+    try {
+      const newToken = await onTokenWillExpire(joinedUID.toString());
+      await client?.renewToken(newToken);
+      await rtmClient.renewToken(newToken);
+      console.log('Successfully renewed Agora RTC and RTM tokens');
+    } catch (error) {
+      console.error('Failed to renew Agora token:', error);
+    }
+  }, [client, onTokenWillExpire, joinedUID, rtmClient]);
+
+  useClientEvent(client, 'token-privilege-will-expire', handleTokenWillExpire);
+
+  return (
+    <div className="flex flex-col gap-6 p-4 h-full">
+      {/* Connection status + end call */}
+      <div className="absolute top-4 right-4 flex items-center gap-2">
+        <button
+          onClick={onEndConversation}
+          className="px-4 py-2 bg-transparent text-red-500 rounded-full border border-red-500 backdrop-blur-sm
+          hover:bg-red-500 hover:text-black transition-all duration-300 shadow-lg hover:shadow-red-500/20 text-sm font-medium"
+        >
+          End Conversation
+        </button>
+        <div
+          className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
+        />
+      </div>
+
+      {/* Remote users (agent audio + RTC subscription).
+          Fixed h-40 matches AudioVisualizer's height so the layout doesn't
+          shift when the agent joins or leaves. */}
+      <div className="relative h-40 w-full flex items-center justify-center">
+        {remoteUsers.map((user) => (
+          <div key={user.uid} className="w-full">
+            <AudioVisualizer track={user.audioTrack} />
+            <RemoteUser user={user} />
+          </div>
+        ))}
+        {remoteUsers.length === 0 && (
+          <div className="text-center text-gray-500">
+            Waiting for AI agent to join...
+          </div>
+        )}
+      </div>
+
+      {/* Local controls */}
+      <div className="fixed bottom-14 md:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3">
+        <MicButtonWithVisualizer
+          isEnabled={isEnabled}
+          setIsEnabled={setIsEnabled}
+          track={localMicrophoneTrack}
+          onToggle={handleMicToggle}
+        />
+        <MicrophoneSelector localMicrophoneTrack={localMicrophoneTrack} />
+      </div>
+
+      {/* Scrollable transcript panel — auto-opens when the agent's first turn completes */}
+      <ConvoTextStream
+        messageList={messageList}
+        currentInProgressMessage={currentInProgressMessage}
+        agentUID={agentUID}
       />
     </div>
-  </div>
-);
+  );
+}
 ```
 
-This creates a responsive visualization that makes it clear when the AI agent is speaking, which improves the user experience through visual feedback alongside the audio.
+### Key uikit Components
 
-The microphone button (with audio visualization) helps users understand if their microphone is working, when they're speaking loudly enough, and when background noise might affect audio quality.
+| Component | Import | Description |
+|-----------|--------|-------------|
+| `AudioVisualizer` | `agora-agent-uikit` | Animated bars that respond to the agent's audio track |
+| `ConvoTextStream` | `agora-agent-uikit` | Floating chat panel showing live and completed transcript turns |
+| `MicButtonWithVisualizer` | `agora-agent-uikit/rtc` | Mic button with built-in Web Audio visualization |
+| `transcriptToMessageList` | `agora-agent-uikit` | Converts toolkit `TranscriptHelperItem[]` to uikit `IMessageListItem[]` |
+
+### Key toolkit Classes
+
+| Export | Description |
+|--------|-------------|
+| `AgoraVoiceAI` | Subscribes to RTM transcript events from the AI agent |
+| `AgoraVoiceAIEvents.TRANSCRIPT_UPDATED` | Fires whenever a transcript turn is created or updated |
+| `TurnStatus` | `IN_PROGRESS`, `END`, `INTERRUPTED` — filters which turns to show as history vs. live |
+| `TranscriptHelperMode.TEXT` | Text-only rendering mode |
 
 ## Testing
 
@@ -1761,35 +1411,31 @@ Now that we have all the components in place, let's finish by testing the applic
 To start the development server:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
-> **Note:** Make sure your `.env` file is properly configured with all the necessary credentials. There is a complete list of environment variables at the end of this guide.
-
-If your application is running correctly, you should see output like:
-
-```
-Server is running on port 3000
-```
+> **Note:** Make sure your `.env.local` file is properly configured with all the necessary credentials. There is a complete list of environment variables at the end of this guide.
 
 Open your browser to `http://localhost:3000` and test.
 
 ### Common Issues and Solutions
 
 - **Agent not joining**:
-
   - Verify your Agora Conversational AI credentials
   - Check console for specific error messages
   - Ensure your TTS configuration is valid
 
 - **Audio not working**:
-
   - Check browser permissions for microphone access
   - Verify the microphone is enabled in the app
   - Check if audio tracks are properly published
 
-- **Token errors**:
+- **Transcripts not appearing**:
+  - Confirm `enable_rtm: true` is set in the agent config
+  - Check that the RTM client logged in successfully before `ConversationComponent` mounted
+  - Verify the RTC + RTM token was generated with `buildTokenWithRtm`
 
+- **Token errors**:
   - Verify App ID and App Certificate are correct
   - Ensure token renewal logic is working
   - Check for proper error handling in token-related functions
@@ -1797,7 +1443,6 @@ Open your browser to `http://localhost:3000` and test.
 - **Channel connection issues**:
   - Check network connectivity
   - Verify Agora service status
-  - Ensure proper cleanup when leaving channels
 
 ## Customizations
 
@@ -1805,94 +1450,74 @@ Agora Conversational AI Engine supports a number of customizations.
 
 ### Customizing the Agent
 
-In the `/agent/invite` endpoint, the `system_message` shapes how the AI agent responds, giving it a specific personality and communication style.
-
-Modify the `system_message` to customize the agents prompt:
+In the invite-agent route, the `instructions` prop shapes how the AI agent responds. Modify the `ADA_PROMPT` constant to customize the agent's personality:
 
 ```typescript
 // In app/api/invite-agent/route.ts
-system_messages: [
-  {
-    role: 'system',
-    content:
-      'You are a friendly and helpful assistant named Alex. Your personality is warm, patient, and slightly humorous. When speaking, use a conversational tone with occasional casual expressions. Your responses should be concise but informative, aimed at making complex topics accessible to everyone. If you don't know something, admit it honestly rather than guessing. When appropriate, offer follow-up questions to help guide the conversation.',
-  },
-],
+const ADA_PROMPT = `You are a friendly and helpful assistant named Alex. Your personality is warm, patient, and slightly humorous...`;
 ```
 
-You can also update the greeting to control the initial message it speaks into the channel.
+Update the `greeting` to control the initial message the agent speaks when joining the channel:
 
 ```typescript
-llm {
-    greeting_message: 'Hello! How can I assist you today?',
-    failure_message: 'Please wait a moment.',
-}
+const GREETING = `Hello! How can I assist you today?`;
 ```
 
 ### Customizing the Voice
 
-Choose the right voice for your application by exploring the voice libraries:
-
-- For Microsoft Azure TTS: Visit the [Microsoft Azure TTS Voice Gallery](https://speech.microsoft.com/portal/voicegallery)
-- For ElevenLabs: Explore the [ElevenLabs Voice Library](https://elevenlabs.io/voice-library)
+The SDK supports multiple TTS providers. This guide uses ElevenLabs. Choose a voice from the [ElevenLabs Voice Library](https://elevenlabs.io/voice-library) and set `voiceId` in the `ElevenLabsTTS` config. For Microsoft Azure TTS, use `MicrosoftTTS` from the SDK instead.
 
 ### Fine-tuning Voice Activity Detection
 
-Adjust VAD settings to optimize conversation flow:
+Adjust `turnDetection` in the Agent config to optimize conversation flow:
 
 ```typescript
 // In app/api/invite-agent/route.ts
-vad: {
-  silence_duration_ms: 600,      // How long to wait after silence to end turn (Increase for longer pauses before next turns)
-  speech_duration_ms: 10000,     // Maximum duration for a single speech segment (force end of turn after this time)
-  threshold: 0.6,                // Sensitivity to background noise (Higher values require louder speech to trigger)
-  interrupt_duration_ms: 200,    // How quickly interruptions are detected
-  prefix_padding_ms: 400,        // How much audio to capture before speech is detected
+turnDetection: {
+  config: {
+    speech_threshold: 0.6,          // Sensitivity to background noise (higher = less sensitive)
+    start_of_speech: {
+      mode: 'vad',
+      vad_config: {
+        interrupt_duration_ms: 200, // ms of speech before interruption triggers
+        prefix_padding_ms: 400,     // audio captured before speech is detected
+      },
+    },
+    end_of_speech: {
+      mode: 'vad',
+      vad_config: {
+        silence_duration_ms: 600,   // ms of silence before turn ends
+      },
+    },
+  },
 },
 ```
 
-# Complete Environment Variables Reference
+## Complete Environment Variables Reference
 
-Here's a complete list of environment variables for your `.env` file:
+Here's a complete list of environment variables for your `.env.local` file:
 
 ```
 # Agora Configuration
 NEXT_PUBLIC_AGORA_APP_ID=
 NEXT_AGORA_APP_CERTIFICATE=
-NEXT_AGORA_CUSTOMER_ID=
-NEXT_AGORA_CUSTOMER_SECRET=
+NEXT_PUBLIC_AGENT_UID=Agent
 
-NEXT_AGORA_CONVO_AI_BASE_URL=https://api.agora.io/api/conversational-ai-agent/v2/projects/
-NEXT_AGENT_UID=333
-
-# LLM Configuration
+# LLM Configuration (OpenAI or compatible)
 NEXT_LLM_URL=https://api.openai.com/v1/chat/completions
-NEXT_LLM_MODEL=gpt-4
 NEXT_LLM_API_KEY=
-# TTS Configuration
-NEXT_TTS_VENDOR=microsoft
 
-# Text-to-Speech Configuration
-NEXT_MICROSOFT_TTS_KEY=
-NEXT_MICROSOFT_TTS_REGION=eastus
-NEXT_MICROSOFT_TTS_VOICE_NAME=en-US-AndrewMultilingualNeural
-NEXT_MICROSOFT_TTS_RATE=1.1
-NEXT_MICROSOFT_TTS_VOLUME=70
+# STT - Deepgram
+NEXT_DEEPGRAM_API_KEY=
 
-# ElevenLabs Configuration
+# TTS - ElevenLabs
 NEXT_ELEVENLABS_API_KEY=
-NEXT_ELEVENLABS_VOICE_ID=XrExE9yKIg1WjnnlVkGX
-NEXT_ELEVENLABS_MODEL_ID=eleven_flash_v2_5
-
-# Modalities Configuration
-NEXT_INPUT_MODALITIES=text
-NEXT_OUTPUT_MODALITIES=text,audio
 ```
 
 ## Next Steps
 
-Congratulations! You've built an Express server that integrates with Agora's Conversational AI Engine. Take this microservice and integrateit with your existing Agora backends.
+Congratulations! You've built a full real-time conversational AI app with Next.js and Agora. The architecture you've built — with the `agora-agent-server-sdk` on the server and the `agora-agent-client-toolkit` + `agora-agent-uikit` on the client — gives you a solid foundation to customize the agent's personality, swap LLM/TTS providers, and scale to production.
 
-For more information about [Agora's Convesational AI Engine](https://www.agora.io/en/products/conversational-ai-engine/) check out the [official documenation](https://docs.agora.io/en/).
+For more information about [Agora's Conversational AI Engine](https://www.agora.io/en/products/conversational-ai-engine/) check out the [official documentation](https://docs.agora.io/en/).
 
 Happy building!
