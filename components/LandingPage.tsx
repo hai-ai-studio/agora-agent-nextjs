@@ -185,7 +185,7 @@ export default function LandingPage() {
               <Button
                 onClick={handleStartConversation}
                 disabled={isLoading}
-                className="w-56 animate-fade-up animate-fade-up-d2"
+                className="w-56 animate-fade-up animate-fade-up-d2 border-2 border-primary bg-primary text-primary-foreground hover:bg-transparent hover:text-primary disabled:hover:bg-primary disabled:hover:text-primary-foreground"
                 aria-label={isLoading ? 'Starting conversation with AI agent' : 'Start conversation with AI agent'}
               >
                 {isLoading ? (

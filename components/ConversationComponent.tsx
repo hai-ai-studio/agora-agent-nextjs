@@ -42,6 +42,13 @@ function normalizeTranscriptSpacing(text: string): string {
     .trim();
 }
 
+/** Bar gradient — `--viz-stop-*` swap via `prefers-color-scheme` in globals.css (no JS). */
+const AGENT_AUDIO_VISUALIZER_GRADIENT = [
+  'hsl(var(--viz-stop-1))',
+  'hsl(var(--viz-stop-2))',
+  'hsl(var(--viz-stop-3))',
+];
+
 export default function ConversationComponent({
   agoraData,
   rtmClient,
@@ -332,6 +339,7 @@ export default function ConversationComponent({
         <Button
           variant="destructive"
           size="sm"
+          className="border-2 border-destructive bg-destructive text-destructive-foreground hover:bg-transparent hover:text-destructive"
           onClick={onEndConversation}
           aria-label="End conversation with AI agent"
         >
@@ -350,7 +358,10 @@ export default function ConversationComponent({
       >
         {remoteUsers.map((user) => (
           <div key={user.uid} className="w-full">
-            <AudioVisualizer track={user.audioTrack} />
+            <AudioVisualizer
+              track={user.audioTrack}
+              gradientColors={AGENT_AUDIO_VISUALIZER_GRADIENT}
+            />
             <RemoteUser user={user} />
           </div>
         ))}
@@ -385,6 +396,8 @@ export default function ConversationComponent({
             onToggle={handleMicToggle}
             className="overflow-visible"
             aria-label={isEnabled ? 'Mute microphone' : 'Unmute microphone'}
+            enabledColor="hsl(var(--primary))"
+            disabledColor="hsl(var(--destructive))"
           />
         </div>
         <MicrophoneSelector localMicrophoneTrack={localMicrophoneTrack} />

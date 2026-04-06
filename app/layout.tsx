@@ -47,7 +47,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${instrumentSans.variable} dark`}>
+    <html lang="en" className={instrumentSans.variable}>
       <body suppressHydrationWarning={true}>{children}</body>
     </html>
   );
