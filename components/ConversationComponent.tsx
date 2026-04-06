@@ -34,6 +34,14 @@ import { Button } from '@/components/ui/button';
 import { MicrophoneSelector } from './MicrophoneSelector';
 import type { ConversationComponentProps } from '@/types/conversation';
 
+function normalizeTranscriptSpacing(text: string): string {
+  return text
+    .replace(/([.!?])([A-Za-z])/g, '$1 $2')
+    .replace(/,([A-Za-z])/g, ', $1')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 export default function ConversationComponent({
   agoraData,
   rtmClient,
@@ -187,9 +195,15 @@ export default function ConversationComponent({
 
   // useTranscript() returns uid="0" for local user speech — remap to actual RTC UID
   // so ConvoTextStream renders user messages on the correct side.
+  // Also normalize punctuation spacing for display when upstream text arrives compacted.
   const transcript = useMemo(() => {
     const localUID = String(client.uid);
-    return rawTranscript.map((m) => (m.uid === '0' ? { ...m, uid: localUID } : m));
+    return rawTranscript.map((m) => {
+      const remappedUID = m.uid === '0' ? localUID : m.uid;
+      const normalizedText =
+        typeof m.text === 'string' ? normalizeTranscriptSpacing(m.text) : m.text;
+      return { ...m, uid: remappedUID, text: normalizedText };
+    });
   }, [rawTranscript, client.uid]);
 
   // Completed (END + INTERRUPTED) messages shown as history.
