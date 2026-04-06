@@ -14,7 +14,7 @@ By the end of this guide, you will have a real-time audio conversation applicati
 
 Before starting, for the guide you're going to need to have:
 
-- Node.js (v22 or higher)
+- Node.js (v24 or higher; see `engines` in `package.json`)
 - A basic understanding of React with TypeScript and Next.js.
 - [An Agora account](https://console.agora.io/signup) - _first 10k minutes each month are free_
 - Conversational AI service [activated on your AppID](https://console.agora.io/)
@@ -48,7 +48,7 @@ Next, install the required Agora dependencies:
 - [agora-agent-uikit](https://www.npmjs.com/package/agora-agent-uikit) — ready-made UI components for the conversation interface
 
 ```bash
-pnpm add agora-rtc-react agora-rtm agora-token agora-agent-server-sdk agora-agent-client-toolkit agora-agent-uikit
+pnpm add agora-rtc-react agora-rtm agora-token agora-agent-server-sdk@^1.3.0 agora-agent-client-toolkit agora-agent-uikit
 ```
 
 For UI components, we'll use shadcn/ui in this guide, but you can use any UI library of your choice or create custom components:
@@ -828,18 +828,50 @@ import {
   AgoraClient,
   Agent,
   Area,
+  AresSTT,
   ExpiresIn,
   OpenAI,
-  ElevenLabsTTS,
-  DeepgramSTT,
+  OpenAITTS,
 } from 'agora-agent-server-sdk';
+
+// Mirrors `AgentPresets` from the SDK (not re-exported on package entry); used for Agora reseller LLM/TTS.
+const BUILTIN_LLM_PRESET = 'openai_gpt_4o_mini' as const;
+const BUILTIN_TTS_PRESET = 'openai_tts_1' as const;
 import { ClientStartRequest, AgentResponse } from '@/types/conversation';
 
-// System prompt that defines the agent's personality and behavior
-const ADA_PROMPT = `You are **Ada**, a developer advocate AI from **Agora**. You help developers understand and build with Agora's Conversational AI platform. Respond concisely and naturally as if in a spoken conversation.`;
+// System prompt that defines the agent's personality and behavior.
+// Swap this out to change what the agent talks about.
+const ADA_PROMPT = `You are **Ada**, a developer advocate AI from **Agora**. You help developers understand and build with Agora's Conversational AI platform.
+
+# What Agora Actually Is
+Agora is a real-time communications company. The product you represent is the **Agora Conversational AI Engine** — it lets developers add voice AI agents to any app by connecting ASR, LLM, and TTS into a real-time pipeline over Agora's SD-RTN (Software Defined Real-Time Network). Key facts:
+- The product is called the **Conversational AI Engine** (not "Chorus", not "Harmony", or any other name you might invent)
+- It runs a full ASR → LLM → TTS pipeline with sub-500ms latency
+- It supports Deepgram, Microsoft, and others for ASR; OpenAI, Anthropic, and others for LLM; ElevenLabs, Microsoft, and others for TTS
+- Agora's SD-RTN is its global real-time network infrastructure — not "SDRTN"
+- MCP in this context means **Model Context Protocol** (Anthropic's open standard for connecting AI models to tools/data), not "multi-channel processing"
+- Agora does not have a product called Chorus, Harmony, or any similar name — do not invent product names
+
+# Honesty Rule
+If you don't know a specific fact about Agora, say so plainly and suggest checking docs.agora.io. Never invent product names, feature names, or capabilities.
+
+# Persona & Tone
+- Friendly, technically credible, concise. You're a peer who builds things, not a support agent.
+- Plain English. No marketing fluff.
+
+# Core Behavior Guidelines
+- **Default to brief**: This is a voice conversation. Keep most replies to 1–2 sentences. Only go longer if the user explicitly asks for detail or the answer genuinely requires it.
+- **Never list or enumerate**: No bullet points, no numbered steps. Say the single most important thing.
+- **Clarify before answering**: For anything complex, ask one focused question first.
+- **Ask at most one question per turn**: Never stack questions.
+- **Guide, don't lecture**: Unlock the next step, not everything at once.`;
 
 // First thing the agent says when a user joins the channel.
-const GREETING = `Hi there! I'm Ada, your virtual assistant from Agora. What kind of project do you have in mind?`;
+// Set NEXT_AGENT_GREETING in .env.local to override.
+const GREETING = process.env.NEXT_AGENT_GREETING ?? `Hi there! I'm Ada, your virtual assistant from Agora. How can I help?`;
+
+// agentUid identifies the AI in the RTC channel — must match NEXT_PUBLIC_AGENT_UID on the client
+const agentUid = process.env.NEXT_PUBLIC_AGENT_UID || 'Agent';
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -847,24 +879,13 @@ function requireEnv(name: string): string {
   return value;
 }
 
-// Set these in .env.local (see env vars reference at end of guide)
-const appId =
-  process.env.NEXT_PUBLIC_AGORA_APP_ID || requireEnv('NEXT_AGORA_APP_ID');
-const appCertificate = requireEnv('NEXT_AGORA_APP_CERTIFICATE');
-// Must match NEXT_PUBLIC_AGENT_UID on the client
-const agentUid = process.env.NEXT_PUBLIC_AGENT_UID || 'Agent';
-// Any OpenAI-compatible endpoint (OpenAI, Azure, Groq, etc.)
-const llmUrl = requireEnv('NEXT_LLM_URL');
-const llmApiKey = requireEnv('NEXT_LLM_API_KEY');
-const deepgramApiKey = requireEnv('NEXT_DEEPGRAM_API_KEY');
-const elevenLabsApiKey = requireEnv('NEXT_ELEVENLABS_API_KEY');
-// Find your voice at https://elevenlabs.io/app/voice-lab
-const ELEVENLABS_VOICE_ID = 'cgSgspJ2msm6clMCkdW9';
-
 export async function POST(request: NextRequest) {
   try {
     const body: ClientStartRequest = await request.json();
     const { requester_id, channel_name } = body;
+
+    const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID || requireEnv('NEXT_AGORA_APP_ID');
+    const appCertificate = requireEnv('NEXT_AGORA_APP_CERTIFICATE');
 
     if (!channel_name || !requester_id) {
       return NextResponse.json(
@@ -873,20 +894,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Authenticates API calls to the Agora Conversational AI service
     const client = new AgoraClient({
       area: Area.US,
       appId,
       appCertificate,
     });
 
+    // ASR: Agora ARES (no third-party STT API key).
+    // LLM + TTS: Agora reseller presets (no BYOK); preset IDs must match createSession below.
     const agent = new Agent({
       name: `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
       instructions: ADA_PROMPT,
       greeting: GREETING,
       failureMessage: 'Please wait a moment.',
       maxHistory: 50,
-      // VAD: controls how the agent detects the start and end of a user's turn
       turnDetection: {
         config: {
           speech_threshold: 0.5,
@@ -899,46 +920,39 @@ export async function POST(request: NextRequest) {
           },
           end_of_speech: {
             mode: 'vad',
-            vad_config: { silence_duration_ms: 480 },
+            vad_config: {
+              silence_duration_ms: 480,
+            },
           },
         },
       },
-      // RTM needed for transcript events; enable_tools for MCP
       advancedFeatures: { enable_rtm: true, enable_tools: true },
     })
-      .withStt(
-        new DeepgramSTT({
-          apiKey: deepgramApiKey,
-          model: 'nova-3',
-          language: 'en',
-        }),
-      )
+      .withStt(new AresSTT({ language: 'en' }))
       .withLlm(
         new OpenAI({
-          url: llmUrl,
-          apiKey: llmApiKey,
-          model: 'gpt-4o',
+          model: 'gpt-4o-mini',
           greetingMessage: GREETING,
           failureMessage: 'Please wait a moment.',
           maxHistory: 15,
-          params: { max_tokens: 1024, temperature: 0.7, top_p: 0.95 },
+          maxTokens: 1024,
+          temperature: 0.7,
+          topP: 0.95,
         }),
       )
       .withTts(
-        new ElevenLabsTTS({
-          key: elevenLabsApiKey,
-          modelId: 'eleven_flash_v2_5',
-          voiceId: ELEVENLABS_VOICE_ID,
+        new OpenAITTS({
+          voice: 'alloy',
         }),
       );
 
-    // remoteUids restricts the agent to only process audio from this user
     const session = agent.createSession(client, {
       channel: channel_name,
       agentUid,
       remoteUids: [requester_id],
       idleTimeout: 30,
       expiresIn: ExpiresIn.hours(1),
+      preset: [BUILTIN_LLM_PRESET, BUILTIN_TTS_PRESET],
     });
 
     const agentId = await session.start();
@@ -963,9 +977,9 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-The SDK supports multiple STT, LLM, and TTS providers. This example uses Deepgram for speech-to-text, OpenAI for the LLM, and ElevenLabs for text-to-speech. You can swap these for other vendors supported by the SDK.
+This quickstart uses **`agora-agent-server-sdk` ^1.3.0** with **AresSTT** (Agora ASR), **OpenAI** (`gpt-4o-mini`, no `apiKey` in code — billing via Agora), **OpenAITTS** (`alloy`, no key), and **`createSession` `preset: ['openai_gpt_4o_mini', 'openai_tts_1']`** so LLM/TTS run on Agora’s reseller integration. The SDK still supports other STT/LLM/TTS providers if you bring your own keys and configuration.
 
-> **Note:** Set all required environment variables in your `.env.local` file. See the environment variables reference at the end of this guide.
+> **Note:** Only Agora App ID, App Certificate, and (on the client) `NEXT_PUBLIC_AGENT_UID` are required for this default pipeline. See the environment variables reference at the end of this guide. Optional `NEXT_LLM_URL` / `NEXT_LLM_API_KEY` apply only if you use the optional `app/api/chat/completions` proxy.
 
 ### Stop Conversation Route
 
@@ -1457,15 +1471,15 @@ In the invite-agent route, the `instructions` prop shapes how the AI agent respo
 const ADA_PROMPT = `You are a friendly and helpful assistant named Alex. Your personality is warm, patient, and slightly humorous...`;
 ```
 
-Update the `greeting` to control the initial message the agent speaks when joining the channel:
+Update the `greeting` to control the initial message the agent speaks when joining the channel (or set `NEXT_AGENT_GREETING` in `.env.local`):
 
 ```typescript
-const GREETING = `Hello! How can I assist you today?`;
+const GREETING = process.env.NEXT_AGENT_GREETING ?? `Hello! How can I assist you today?`;
 ```
 
 ### Customizing the Voice
 
-The SDK supports multiple TTS providers. This guide uses ElevenLabs. Choose a voice from the [ElevenLabs Voice Library](https://elevenlabs.io/voice-library) and set `voiceId` in the `ElevenLabsTTS` config. For Microsoft Azure TTS, use `MicrosoftTTS` from the SDK instead.
+The default pipeline uses **OpenAITTS** with `voice: 'alloy'` and the `openai_tts_1` session preset. To use another vendor, replace `.withTts(...)` and the TTS entry in `createSession`’s `preset` array with the matching SDK types and preset IDs from the Agora Conversational AI documentation.
 
 ### Fine-tuning Voice Activity Detection
 
