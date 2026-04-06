@@ -48,7 +48,7 @@ Next, install the required Agora dependencies:
 - [agora-agent-uikit](https://www.npmjs.com/package/agora-agent-uikit) — ready-made UI components for the conversation interface
 
 ```bash
-pnpm add agora-rtc-react agora-rtm agora-token agora-agent-server-sdk@^1.3.0 agora-agent-client-toolkit agora-agent-uikit
+pnpm add agora-rtc-react agora-rtm agora-token agora-agent-server-sdk@^1.3.1 agora-agent-client-toolkit agora-agent-uikit
 ```
 
 For UI components, we'll use shadcn/ui in this guide, but you can use any UI library of your choice or create custom components:
@@ -977,7 +977,7 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-This quickstart uses **`agora-agent-server-sdk` ^1.3.0** with **AresSTT** (Agora ASR), **OpenAI** (`gpt-4o-mini`, no `apiKey` in code — billing via Agora), **OpenAITTS** (`alloy`, no key), and **`createSession` `preset: ['openai_gpt_4o_mini', 'openai_tts_1']`** so LLM/TTS run on Agora’s reseller integration. The SDK still supports other STT/LLM/TTS providers if you bring your own keys and configuration.
+This quickstart uses **`agora-agent-server-sdk` ^1.3.1** with **AresSTT** (Agora ASR), **OpenAI** (`gpt-4o-mini`, no `apiKey` in code — billing via Agora), **OpenAITTS** (`alloy`, no key), and **`createSession` `preset: ['openai_gpt_4o_mini', 'openai_tts_1']`** so LLM/TTS run on Agora’s reseller integration. The SDK still supports other STT/LLM/TTS providers if you bring your own keys and configuration.
 
 > **Note:** Only Agora App ID, App Certificate, and (on the client) `NEXT_PUBLIC_AGENT_UID` are required for this default pipeline. See the environment variables reference at the end of this guide. Optional `NEXT_LLM_URL` / `NEXT_LLM_API_KEY` apply only if you use the optional `app/api/chat/completions` proxy.
 
