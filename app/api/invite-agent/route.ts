@@ -3,10 +3,11 @@ import {
   AgoraClient,
   Agent,
   Area,
-  ExpiresIn,
-  OpenAI,
-  ElevenLabsTTS,
   DeepgramSTT,
+  ElevenLabsTTS,
+  ExpiresIn,
+  MiniMaxTTS,
+  OpenAI,
 } from 'agora-agent-server-sdk';
 import { ClientStartRequest, AgentResponse } from '@/types/conversation';
 
@@ -16,7 +17,7 @@ const ADA_PROMPT = `You are **Ada**, a developer advocate AI from **Agora**. You
 
 # What Agora Actually Is
 Agora is a real-time communications company. The product you represent is the **Agora Conversational AI Engine** — it lets developers add voice AI agents to any app by connecting ASR, LLM, and TTS into a real-time pipeline over Agora's SD-RTN (Software Defined Real-Time Network). Key facts:
-- The product is called the **Conversational AI Engine** (not "Chorus", not "Harmony", not any other name you might invent)
+- The product is called the **Conversational AI Engine** (not "Chorus", not "Harmony", or any other name you might invent)
 - It runs a full ASR → LLM → TTS pipeline with sub-500ms latency
 - It supports Deepgram, Microsoft, and others for ASR; OpenAI, Anthropic, and others for LLM; ElevenLabs, Microsoft, and others for TTS
 - Agora's SD-RTN is its global real-time network infrastructure — not "SDRTN"
@@ -42,7 +43,11 @@ If you don't know a specific fact about Agora, say so plainly and suggest checki
 const GREETING = process.env.NEXT_AGENT_GREETING ?? `Hi there! I'm Ada, your virtual assistant from Agora. How can I help?`;
 
 // agentUid identifies the AI in the RTC channel — must match NEXT_PUBLIC_AGENT_UID on the client
-const agentUid = process.env.NEXT_PUBLIC_AGENT_UID || 'Agent';
+const agentUid = process.env.NEXT_PUBLIC_AGENT_UID || '123456';
+
+// ElevenLabs BYOK (`.withTts` commented block). Override with NEXT_ELEVENLABS_VOICE_ID.
+const ELEVENLABS_VOICE_ID =
+  process.env.NEXT_ELEVENLABS_VOICE_ID ?? 'pNInz6obpgDQGcFmaJgB';
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -61,11 +66,6 @@ export async function POST(request: NextRequest) {
     // with a clear error message rather than a silent failure.
     const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID || requireEnv('NEXT_AGORA_APP_ID');
     const appCertificate = requireEnv('NEXT_AGORA_APP_CERTIFICATE');
-    const llmUrl = requireEnv('NEXT_LLM_URL');
-    const llmApiKey = requireEnv('NEXT_LLM_API_KEY');
-    const deepgramApiKey = requireEnv('NEXT_DEEPGRAM_API_KEY');
-    const elevenLabsApiKey = requireEnv('NEXT_ELEVENLABS_API_KEY');
-    const ELEVENLABS_VOICE_ID = process.env.NEXT_ELEVENLABS_VOICE_ID ?? 'cgSgspJ2msm6clMCkdW9';
 
     if (!channel_name || !requester_id) {
       return NextResponse.json(
@@ -84,6 +84,8 @@ export async function POST(request: NextRequest) {
       appCertificate,
     });
 
+    // Pipeline: Deepgram (reseller) STT → OpenAI (reseller) LLM → MiniMax (reseller) TTS.
+    // Omit vendor API keys for supported models — AgentKit infers reseller presets on start (see Agora Console / billing).
     const agent = new Agent({
       name: `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
       instructions: ADA_PROMPT,
@@ -98,13 +100,13 @@ export async function POST(request: NextRequest) {
             mode: 'vad',
             vad_config: {
               interrupt_duration_ms: 160, // ms of speech before interruption triggers
-              prefix_padding_ms: 300,     // audio captured before speech is detected
+              prefix_padding_ms: 300, // audio captured before speech is detected
             },
           },
           end_of_speech: {
             mode: 'vad',
             vad_config: {
-              silence_duration_ms: 480,   // ms of silence before turn ends
+              silence_duration_ms: 480, // ms of silence before turn ends
             },
           },
         },
@@ -115,28 +117,51 @@ export async function POST(request: NextRequest) {
     })
       .withStt(
         new DeepgramSTT({
-          apiKey: deepgramApiKey,
           model: 'nova-3',
           language: 'en',
         }),
+        // BYOK: uncomment the following block and set NEXT_DEEPGRAM_API_KEY
+        // new DeepgramSTT({
+        //   apiKey: requireEnv('NEXT_DEEPGRAM_API_KEY'),
+        //   model: 'nova-3',
+        //   language: 'en',
+        // }),
       )
       .withLlm(
         new OpenAI({
-          url: llmUrl,
-          apiKey: llmApiKey,
-          model: process.env.NEXT_LLM_MODEL ?? 'gpt-4o',
+          model: 'gpt-4o-mini',
           greetingMessage: GREETING,
           failureMessage: 'Please wait a moment.',
           maxHistory: 15,
-          params: { max_tokens: 1024, temperature: 0.7, top_p: 0.95 },
+          maxTokens: 1024,
+          temperature: 0.7,
+          topP: 0.95,
         }),
+        // BYOK: uncomment the following block and set NEXT_OPENAI_API_KEY and NEXT_OPENAI_
+        // new OpenAI({
+        //   apiKey: requireEnv('NEXT_OPENAI_API_KEY'),
+        //   url: requireEnv('NEXT_OPENAI_URL'),
+        //   model: 'gpt-4o-mini',
+        //   greetingMessage: GREETING,
+        //   failureMessage: 'Please wait a moment.',
+        //   maxHistory: 15,
+        //   maxTokens: 1024,
+        //   temperature: 0.7,
+        //   topP: 0.95,
+        // }),
       )
       .withTts(
-        new ElevenLabsTTS({
-          key: elevenLabsApiKey,
-          modelId: 'eleven_flash_v2_5',
-          voiceId: ELEVENLABS_VOICE_ID,
+        new MiniMaxTTS({
+          model: 'speech_2_6_turbo',
+          voiceId: 'English_captivating_female1',
         }),
+        // BYOK — ElevenLabs (set NEXT_ELEVENLABS_API_KEY; optional NEXT_ELEVENLABS_VOICE_ID)
+        // new ElevenLabsTTS({
+        //   key: requireEnv('NEXT_ELEVENLABS_API_KEY'),
+        //   modelId: 'eleven_flash_v2_5',
+        //   voiceId: ELEVENLABS_VOICE_ID || 'pNInz6obpgDQGcFmaJgB',
+        //   sampleRate: 24000,
+        // }),
       );
 
     // remoteUids restricts the agent to only process audio from this user
@@ -146,7 +171,7 @@ export async function POST(request: NextRequest) {
       remoteUids: [requester_id],
       idleTimeout: 30,
       expiresIn: ExpiresIn.hours(1),
-      // debug: true,
+      debug: false, // enable debug to show restful API calls in the console
     });
 
     const agentId = await session.start();
