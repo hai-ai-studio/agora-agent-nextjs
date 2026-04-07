@@ -96,11 +96,14 @@ export default function LandingPage() {
         // 2b. Set up RTM (dynamically imported to keep it client-only)
         (async () => {
           const { default: AgoraRTM } = await import('agora-rtm');
-          const rtm = new AgoraRTM.RTM(process.env.NEXT_PUBLIC_AGORA_APP_ID!, String(Date.now()));
+          const rtm: RTMClient = new AgoraRTM.RTM(
+            process.env.NEXT_PUBLIC_AGORA_APP_ID!,
+            String(Date.now()),
+          );
           await rtm.login({ token: responseData.token });
           await rtm.subscribe(responseData.channel);
           console.log('RTM ready, channel:', responseData.channel);
-          return rtm as RTMClient;
+          return rtm;
         })(),
       ]);
 
