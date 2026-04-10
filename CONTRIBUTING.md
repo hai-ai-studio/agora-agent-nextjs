@@ -6,7 +6,7 @@ Thank you for your interest in contributing! This document provides guidelines f
 
 ### Prerequisites
 
-- Node.js 24 or higher
+- Node.js 22 or higher (see `engines` in `package.json`)
 - pnpm 8.x or higher
 - An Agora account with Conversational AI enabled
 

@@ -10,13 +10,11 @@ function generateChannelName(): string {
 }
 
 export async function GET(request: NextRequest) {
-  console.log('Generating Agora token...');
-
+  // console.log('Generating Agora token...');
   const APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID;
   const APP_CERTIFICATE = process.env.NEXT_AGORA_APP_CERTIFICATE;
 
   if (!APP_ID || !APP_CERTIFICATE) {
-    console.error('Agora credentials are not set');
     return NextResponse.json(
       { error: 'Agora credentials are not set' },
       { status: 500 }
@@ -33,7 +31,7 @@ export async function GET(request: NextRequest) {
     Math.floor(Date.now() / 1000) + EXPIRATION_TIME_IN_SECONDS;
 
   try {
-    console.log('Building RTC+RTM token with UID:', uid, 'Channel:', channelName);
+    // console.log('Building RTC+RTM token: uid =', uid, 'channel =', channelName);
     const token = RtcTokenBuilder.buildTokenWithRtm(
       APP_ID,
       APP_CERTIFICATE,
@@ -43,8 +41,8 @@ export async function GET(request: NextRequest) {
       expirationTime,
       expirationTime
     );
+    // console.log('Token generated successfully (RTC + RTM)');
 
-    console.log('Token generated successfully (RTC + RTM)');
     return NextResponse.json({
       token,
       uid: uid.toString(),

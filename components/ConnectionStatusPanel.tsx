@@ -9,6 +9,8 @@ type ConnectionStatusPanelProps = {
   onToggle: () => void;
 };
 
+// Produces an accessible label from the raw RTC state string, with a special case for
+// "Connected (issues detected)" when RTM/agent errors exist while RTC transport is healthy.
 function getConnectionLabel(
   connectionState: string,
   connectionSeverity: 'normal' | 'warning' | 'error'
@@ -32,11 +34,12 @@ export function ConnectionStatusPanel({
 }: ConnectionStatusPanelProps) {
   return (
     <div className="relative flex-shrink-0">
+      {/* Minimal status affordance: color and ping convey RTC health before the user opens details. */}
       <button
         type="button"
         className="relative block"
         role="status"
-        aria-label={connectionState}
+        aria-label={getConnectionLabel(connectionState, connectionSeverity)}
         aria-expanded={isOpen}
         aria-controls="connection-details-panel"
         onClick={onToggle}
@@ -65,8 +68,7 @@ export function ConnectionStatusPanel({
         </span>
       </button>
 
-      <span className="hidden">{getConnectionLabel(connectionState, connectionSeverity)}</span>
-
+      {/* Expandable detail panel: current RTC state plus the captured agent/RTM issues. */}
       <div
         id="connection-details-panel"
         className={`fixed top-16 left-1/2 z-20 w-[min(92vw,22rem)] -translate-x-1/2 rounded-md border border-border bg-card/95 p-3 space-y-2 backdrop-blur-sm transition-opacity md:absolute md:left-0 md:top-full md:mt-3 md:w-[24rem] md:translate-x-0 md:translate-y-0 ${

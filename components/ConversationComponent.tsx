@@ -18,21 +18,22 @@ import {
   AgoraVoiceAIEvents,
   AgentState,
   MessageSalStatus,
-  TurnStatus,
   TranscriptHelperMode,
   type TranscriptHelperItem,
   type UserTranscription,
   type AgentTranscription,
 } from 'agora-agent-client-toolkit';
-import {
-  AgentVisualizer,
-  ConvoTextStream,
-  type AgentVisualizerState,
-  type IMessageListItem,
-} from 'agora-agent-uikit';
+import { AgentVisualizer, ConvoTextStream } from 'agora-agent-uikit';
 import { MicButtonWithVisualizer } from 'agora-agent-uikit/rtc';
 import { Button } from '@/components/ui/button';
 import { DEFAULT_AGENT_UID } from '@/lib/agora';
+import {
+  getCurrentInProgressMessage,
+  getMessageList,
+  mapAgentVisualizerState,
+  normalizeTimestampMs,
+  normalizeTranscript,
+} from '@/lib/conversation';
 import { MicrophoneSelector } from './MicrophoneSelector';
 import {
   getConversationIssueSeverity,
@@ -41,21 +42,11 @@ import {
 import { ConnectionStatusPanel } from './ConnectionStatusPanel';
 import type { ConversationComponentProps } from '@/types/conversation';
 
-function normalizeTranscriptSpacing(text: string): string {
-  return text
-    .replace(/([.!?])([A-Za-z])/g, '$1 $2')
-    .replace(/,([A-Za-z])/g, ', $1')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-}
-
+// Cap the displayed issues list to avoid overwhelming the UI during a cascade of errors.
 const MAX_CONNECTION_ISSUES = 6;
 
-function normalizeTimestampMs(timestamp: number): number {
-  // Some payloads are seconds, others are milliseconds.
-  return timestamp > 1e12 ? timestamp : timestamp * 1000;
-}
-
+// Payload shape for signaling-level errors forwarded by the agent over RTM.
+// The `module` field identifies which backend subsystem (LLM / ASR / TTS) raised the error.
 type RtmMessageErrorPayload = {
   object: 'message.error';
   module?: string;
@@ -64,72 +55,32 @@ type RtmMessageErrorPayload = {
   send_ts?: number;
 };
 
+// Payload shape for SAL (Session Abstraction Layer) registration status messages.
+// VP_REGISTER_FAIL and VP_REGISTER_DUPLICATE indicate RTM channel subscription problems.
 type RtmSalStatusPayload = {
   object: 'message.sal_status';
   status?: string;
   timestamp?: number;
 };
 
-function isRtmMessageErrorPayload(value: unknown): value is RtmMessageErrorPayload {
-  return !!value && typeof value === 'object' && (value as { object?: unknown }).object === 'message.error';
+// Type guard for RTM signaling-level error payloads (object: 'message.error').
+function isRtmMessageErrorPayload(
+  value: unknown,
+): value is RtmMessageErrorPayload {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    (value as { object?: unknown }).object === 'message.error'
+  );
 }
 
+// Type guard for RTM SAL status payloads (object: 'message.sal_status').
 function isRtmSalStatusPayload(value: unknown): value is RtmSalStatusPayload {
   return (
     !!value &&
     typeof value === 'object' &&
     (value as { object?: unknown }).object === 'message.sal_status'
   );
-}
-
-function mapAgentVisualizerState(
-  agentState: AgentState | null,
-  isAgentConnected: boolean,
-  connectionState: string,
-): AgentVisualizerState {
-  if (
-    connectionState === 'DISCONNECTED' ||
-    connectionState === 'DISCONNECTING'
-  ) {
-    return 'disconnected';
-  }
-
-  if (
-    connectionState === 'CONNECTING' ||
-    connectionState === 'RECONNECTING'
-  ) {
-    return 'joining';
-  }
-
-  if (!isAgentConnected) {
-    return 'not-joined';
-  }
-
-  switch (agentState) {
-    case 'listening':
-      return 'listening';
-    case 'thinking':
-      return 'analyzing';
-    case 'speaking':
-      return 'talking';
-    case 'idle':
-    case 'silent':
-    default:
-      return 'ambient';
-  }
-}
-
-function toMessageListItem(
-  item: TranscriptHelperItem<Partial<UserTranscription | AgentTranscription>>,
-): IMessageListItem {
-  return {
-    turn_id: item.turn_id,
-    uid: Number(item.uid) || 0,
-    text: typeof item.text === 'string' ? item.text : '',
-    status: item.status as unknown as IMessageListItem['status'],
-    createdAt:
-      typeof item._time === 'number' ? normalizeTimestampMs(item._time) : undefined,
-  };
 }
 
 export default function ConversationComponent({
@@ -147,7 +98,8 @@ export default function ConversationComponent({
   // Tracks granular RTC connection state for the status dot.
   // Agora states: DISCONNECTED | CONNECTING | CONNECTED | DISCONNECTING | RECONNECTING
   const [connectionState, setConnectionState] = useState<string>('CONNECTING');
-  const agentUID = process.env.NEXT_PUBLIC_AGENT_UID ?? String(DEFAULT_AGENT_UID);
+  const agentUID =
+    process.env.NEXT_PUBLIC_AGENT_UID ?? String(DEFAULT_AGENT_UID);
   const [joinedUID, setJoinedUID] = useState<UID>(0);
 
   // Transcript + agent state — managed with AgoraVoiceAI (see effect below).
@@ -243,9 +195,7 @@ export default function ConversationComponent({
   //     effect only runs on the real mount (not the discarded fake one).
   //   - Once `isReady` is true, React does NOT double-invoke this effect for
   //     subsequent state changes (`joinSuccess` becoming true). That means
-  //     AgoraVoiceAI.init() is called exactly once, avoiding the singleton
-  //     race condition that occurs when ConversationalAIProvider (React toolkit)
-  //     is double-mounted by StrictMode.
+  //     AgoraVoiceAI.init() is called exactly once.
   useEffect(() => {
     if (!isReady || !joinSuccess) return;
 
@@ -263,6 +213,7 @@ export default function ConversationComponent({
         if (cancelled) {
           try {
             if (AgoraVoiceAI.getInstance() === ai) {
+              // Tear down only the instance created by this effect run.
               ai.unsubscribe();
               ai.destroy();
             }
@@ -273,6 +224,7 @@ export default function ConversationComponent({
         ai.on(AgoraVoiceAIEvents.TRANSCRIPT_UPDATED, (t) => {
           setRawTranscript([...t]);
         });
+        // Agent state drives the visualizer, independent of RTC audio presence.
         ai.on(AgoraVoiceAIEvents.AGENT_STATE_CHANGED, (_, event) =>
           setAgentState(event.state),
         );
@@ -286,6 +238,7 @@ export default function ConversationComponent({
             timestamp: normalizeTimestampMs(error.timestamp),
           });
         });
+        // SAL status: capture raw RTM messages so message.sal_status surfaces even if higher-level events don't.
         ai.on(
           AgoraVoiceAIEvents.MESSAGE_SAL_STATUS,
           (agentUserId, salStatus) => {
@@ -304,6 +257,7 @@ export default function ConversationComponent({
             }
           },
         );
+        // Agent error: capture raw RTM messages so message.error surfaces even if higher-level events don't.
         ai.on(AgoraVoiceAIEvents.AGENT_ERROR, (agentUserId, error) => {
           addConnectionIssue({
             id: `${Date.now()}-${agentUserId}-agent-error-${error.code}`,
@@ -314,6 +268,7 @@ export default function ConversationComponent({
             timestamp: normalizeTimestampMs(error.timestamp),
           });
         });
+        // subscribeMessage binds the toolkit to both RTC stream messages and RTM payloads.
         ai.subscribeMessage(agoraData.channel);
       } catch (error) {
         if (!cancelled) {
@@ -335,7 +290,7 @@ export default function ConversationComponent({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReady, joinSuccess]);
 
-  // Signaling - capture raw RTM messages so message.error surfaces even if higher-level events don't.
+  // Raw RTM parsing is kept as a fallback for signaling-level errors and SAL status.
   useEffect(() => {
     const handleRtmMessage = (event: {
       message: string | Uint8Array;
@@ -390,35 +345,21 @@ export default function ConversationComponent({
     };
   }, [rtmClient, addConnectionIssue]);
 
-  // useTranscript() returns uid="0" for local user speech — remap to actual RTC UID
+  // The toolkit uses uid="0" for local user speech — remap to actual RTC UID
   // so ConvoTextStream renders user messages on the correct side.
   // Also normalize punctuation spacing for display when upstream text arrives compacted.
   const transcript = useMemo(() => {
-    const localUID = String(client.uid);
-    return rawTranscript.map((m) => {
-      const remappedUID = m.uid === '0' ? localUID : m.uid;
-      const normalizedText =
-        typeof m.text === 'string'
-          ? normalizeTranscriptSpacing(m.text)
-          : m.text;
-      return { ...m, uid: remappedUID, text: normalizedText };
-    });
+    return normalizeTranscript(rawTranscript, String(client.uid));
   }, [rawTranscript, client.uid]);
 
   // Completed (END + INTERRUPTED) messages shown as history.
   // INTERRUPTED must be included — if the agent's first turn is cut off,
   // messageList stays empty and ConvoTextStream never auto-opens.
-  const messageList = useMemo(
-    () =>
-      transcript
-        .filter((m) => m.status !== TurnStatus.IN_PROGRESS)
-        .map(toMessageListItem),
-    [transcript],
-  );
+  const messageList = useMemo(() => getMessageList(transcript), [transcript]);
 
   const currentInProgressMessage = useMemo(() => {
-    const m = transcript.find((x) => x.status === TurnStatus.IN_PROGRESS);
-    return m ? toMessageListItem(m) : null;
+    // ConvoTextStream renders the live partial turn separately from the history list.
+    return getCurrentInProgressMessage(transcript);
   }, [transcript]);
 
   // Publish local mic once the track exists; usePublish waits for RTC connection.
@@ -445,6 +386,7 @@ export default function ConversationComponent({
   });
 
   const connectionSeverity = useMemo<'normal' | 'warning' | 'error'>(() => {
+    // RTC transport problems take precedence; otherwise derive severity from captured issues.
     if (
       connectionState === 'DISCONNECTED' ||
       connectionState === 'DISCONNECTING'
@@ -469,11 +411,7 @@ export default function ConversationComponent({
 
   const visualizerState = useMemo(
     () =>
-      mapAgentVisualizerState(
-        agentState,
-        isAgentConnected,
-        connectionState,
-      ),
+      mapAgentVisualizerState(agentState, isAgentConnected, connectionState),
     [agentState, isAgentConnected, connectionState],
   );
 
@@ -500,6 +438,7 @@ export default function ConversationComponent({
   const handleTokenWillExpire = useCallback(async () => {
     if (!onTokenWillExpire || !joinedUID) return;
     try {
+      // RTC and RTM renew independently, but the quickstart fetches both in one request.
       const { rtcToken, rtmToken } = await onTokenWillExpire(
         joinedUID.toString(),
       );
@@ -514,6 +453,7 @@ export default function ConversationComponent({
 
   return (
     <div className="flex flex-col gap-6 p-4 h-full">
+      {/* Top-left status affordance: opens transport and agent error details without covering the main controls. */}
       <div className="absolute top-4 left-4">
         <ConnectionStatusPanel
           connectionState={connectionState}
@@ -524,6 +464,7 @@ export default function ConversationComponent({
         />
       </div>
 
+      {/* Top-right destructive action: stops the cloud agent and ends the current session. */}
       <div className="absolute top-4 right-4">
         <Button
           variant="destructive"
@@ -537,8 +478,7 @@ export default function ConversationComponent({
         </Button>
       </div>
 
-      {/* Remote users keep RTC audio subscribed. The visualizer itself is driven
-          by RTM agent state so the user sees lifecycle and speaking status in one place. */}
+      {/* Center stage: the visualizer shows agent lifecycle/speaking state, while hidden RemoteUser mounts keep agent audio subscribed. */}
       <div
         className="relative h-56 w-full flex items-center justify-center"
         role="region"
@@ -552,7 +492,7 @@ export default function ConversationComponent({
         ))}
       </div>
 
-      {/* Local controls — pill-framed dock at bottom center */}
+      {/* Bottom dock: microphone mute/unmute plus input-device switching for the local user. */}
       <div
         className="fixed bottom-14 md:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-card/80 backdrop-blur-md border border-border rounded-full px-4 py-2"
         role="group"
@@ -573,6 +513,7 @@ export default function ConversationComponent({
         <MicrophoneSelector localMicrophoneTrack={localMicrophoneTrack} />
       </div>
 
+      {/* Transcript panel: completed turns plus the current partial turn stream into the floating chat UI. */}
       <ConvoTextStream
         messageList={messageList}
         currentInProgressMessage={currentInProgressMessage}
