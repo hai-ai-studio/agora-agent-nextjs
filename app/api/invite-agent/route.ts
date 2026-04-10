@@ -62,8 +62,7 @@ export async function POST(request: NextRequest) {
 
     // Validate required env vars on first request so misconfiguration surfaces
     // with a clear error message rather than a silent failure.
-    const appId =
-      process.env.NEXT_PUBLIC_AGORA_APP_ID || requireEnv('NEXT_AGORA_APP_ID');
+    const appId = requireEnv('NEXT_PUBLIC_AGORA_APP_ID');
     const appCertificate = requireEnv('NEXT_AGORA_APP_CERTIFICATE');
 
     if (!channel_name || !requester_id) {
