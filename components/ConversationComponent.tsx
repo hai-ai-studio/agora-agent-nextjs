@@ -528,7 +528,7 @@ export default function ConversationComponent({
         <Button
           variant="destructive"
           size="icon"
-          className="h-9 w-9 rounded-full border border-destructive/70 bg-destructive/90 text-destructive-foreground hover:bg-destructive hover:text-destructive-foreground"
+          className="h-9 w-9 rounded-full border-2 border-destructive bg-destructive text-destructive-foreground hover:bg-transparent hover:text-destructive"
           onClick={onEndConversation}
           aria-label="End conversation with AI agent"
           title="End conversation"
