@@ -26,7 +26,7 @@ Required environment variables:
 
 Optional convenience override:
 
-- `NEXT_PUBLIC_AGENT_UID` defaults to `12345`
+- `NEXT_PUBLIC_AGENT_UID` defaults to `123456`
 
 The default agent configuration in [`app/api/invite-agent/route.ts`](app/api/invite-agent/route.ts) uses Agora-managed defaults for STT, LLM, and TTS, so no additional vendor API keys are required for the base quickstart.
 
