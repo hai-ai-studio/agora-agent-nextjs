@@ -27,7 +27,7 @@ export function MicrophoneSelector({
   const [currentDeviceId, setCurrentDeviceId] = useState<string>('');
   const [isOpen, setIsOpen] = useState(false);
 
-  // Fetch available microphones
+  // Pull the current browser microphone list and reconcile it with the active Agora track.
   const fetchMicrophones = async () => {
     try {
       // Import AgoraRTC dynamically to access getMicrophones
@@ -56,35 +56,34 @@ export function MicrophoneSelector({
     }
   };
 
-  // Fetch devices on mount and when track changes
+  // Refresh device options once the local mic track exists.
   useEffect(() => {
     if (localMicrophoneTrack) {
       fetchMicrophones();
     }
   }, [localMicrophoneTrack]);
 
-  // Handle device change
+  // Swap the active input device on the already-created local microphone track.
   const handleDeviceChange = async (deviceId: string) => {
     if (!localMicrophoneTrack) return;
 
     try {
       await localMicrophoneTrack.setDevice(deviceId);
       setCurrentDeviceId(deviceId);
-      console.log('Microphone device changed to:', deviceId);
+      // console.log('Microphone device changed to:', deviceId);
     } catch (error) {
       console.error('Error changing microphone device:', error);
     }
   };
 
-  // Hot-swap: Listen for device changes
+  // Keep the picker in sync when microphones are plugged in, removed, or auto-selected by the browser.
   useEffect(() => {
     const setupDeviceChangeListener = async () => {
       try {
         const AgoraRTC = (await import('agora-rtc-react')).default;
 
         AgoraRTC.onMicrophoneChanged = async (changedDevice) => {
-          console.log('Microphone changed:', changedDevice);
-
+          // console.log('Microphone changed:', changedDevice);
           // Refresh device list
           await fetchMicrophones();
 
@@ -120,7 +119,7 @@ export function MicrophoneSelector({
     };
   }, [localMicrophoneTrack]);
 
-  // Only show selector if there are multiple devices to choose from
+  // Hide the picker when there is nothing meaningful to choose between.
   if (devices.length <= 1) {
     return null;
   }
@@ -129,6 +128,7 @@ export function MicrophoneSelector({
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      {/* Trigger button for the device list anchored in the in-call control dock. */}
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -139,6 +139,7 @@ export function MicrophoneSelector({
           <Settings className="h-4 w-4 text-foreground" />
         </Button>
       </DropdownMenuTrigger>
+      {/* Device menu: current selection plus all discovered microphones. */}
       <DropdownMenuContent
         align="center"
         className="w-56 bg-popover border-border"
