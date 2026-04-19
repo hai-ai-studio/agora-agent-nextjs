@@ -14,53 +14,81 @@ A Next.js 16 (App Router) quickstart that lets a browser user speak with an Agor
 
 ## 2. Directory Map
 
+All application source lives under `src/`. Feature code is grouped under `src/features/<feature>/` (components, hooks, lib, server, types co-located).
+
 ```
-app/
-  page.tsx                           — root page, renders <LandingPage />
-  layout.tsx                         — minimal shell
-  globals.css                        — global styles
-  lab/
-    visualizer/page.tsx              — standalone playground for AgentShaderVisualizer
-  api/
-    generate-agora-token/route.ts    — GET  — issues RTC+RTM token for the browser user
-    invite-agent/route.ts            — POST — starts the Agora ConvoAI agent
-    stop-conversation/route.ts       — POST — stops the agent
-    chat/completions/route.ts        — POST — optional custom LLM proxy (OpenAI SSE format)
+src/
+  app/
+    page.tsx                           — root page, renders <LandingPage />
+    layout.tsx                         — minimal shell with next/font bindings
+    globals.css                        — design tokens + body base only
+    lab/
+      visualizer/page.tsx              — standalone playground for AgentShaderVisualizer
+    api/
+      generate-agora-token/route.ts    — GET  — issues RTC+RTM token for the browser user
+      invite-agent/route.ts            — POST — starts the Agora ConvoAI agent
+      stop-conversation/route.ts       — POST — stops the agent
+      chat/completions/route.ts        — POST — optional custom LLM proxy (OpenAI SSE format)
 
-components/
-  LandingPage.tsx                    — editorial pre-call screen + session orchestration
-  ConversationComponent.tsx          — live conversation container; owns all Agora hooks + AgoraVoiceAI, renders the Aria layout
-  aria/
-    Ambient.tsx                      — drifting blob background + grain
-    Persona.tsx                      — concentric-ring avatar, status pill, call timer
-    Waveform.tsx                     — SVG bar visualizer (two rows: agent + user)
-    Transcript.tsx                   — glass side panel, bubbles + typewriter caret
-    Controls.tsx                     — pill dock: voice, mic, keyboard, end-call
-    VoiceSelector.tsx                — voice + language popover (UI only, not wired to backend yet)
-    types.ts                         — AriaState enum + mapToAriaState + copy map
-  AgentShaderVisualizer/             — WebGL shader visualizer used at /lab/visualizer only
-    index.tsx                        — React component
-    gl.ts                            — minimal WebGL helper (no deps)
-    shader.ts                        — vertex + fragment GLSL
-    useAudioFFT.ts                   — MediaStreamTrack → bass/mid/treble bands
+  features/
+    conversation/
+      components/
+        LandingPage.tsx                — editorial pre-call screen; delegates orchestration to useAgoraSession
+        ConversationShell.tsx          — in-call container; owns Agora RTC hooks, renders Aria layout
+        Ambient.tsx                    — drifting blob background + grain
+        Persona.tsx                    — concentric-ring avatar, status pill, call timer
+        Waveform.tsx                   — SVG bar visualizer (two rows: agent + user), fluid width
+        Transcript.tsx                 — glass side panel, bubbles + typewriter caret
+        Controls.tsx                   — pill dock: voice, mic, transcript toggle, end-call
+        VoiceSelector.tsx              — voice + language popover (UI only, not wired to backend yet)
+        MicPicker.tsx                  — device picker popover (hot-swap via AgoraRTC.onMicrophoneChanged)
+        aria-state.ts                  — AriaState enum + mapToAriaState + ADA_AGENT_NAME + ARIA_HINT copy
+      hooks/
+        useStrictModeReady.ts          — setTimeout(fn,0) StrictMode guard
+        useAgoraVoiceAI.ts             — toolkit init + transcript/agent state + RTM error stream
+        useTokenRefresh.ts             — renews RTC + RTM tokens on token-privilege-will-expire
+        useAgoraSession.ts             — token fetch + agent invite + RTM lifecycle
+      lib/
+        transcript.ts                  — pure helpers: normalizeTranscript, getMessageList,
+                                         getCurrentInProgressMessage, normalizeTimestampMs,
+                                         toMessageListItem, normalizeTranscriptSpacing
+        visualizer-state.ts            — mapAgentVisualizerState (RTC + agent signals → AgentVisualizerState)
+        audio.ts                       — useAudioFFT hook (MediaStreamTrack → bass/mid/treble bands)
+        agora-config.ts                — DEFAULT_AGENT_UID constant (123456)
+      server/
+        invite-agent-config.ts         — ADA_PROMPT, GREETING, AGENT_UID (imported by invite-agent route)
+      types.ts                         — AgoraTokenData, ClientStartRequest, AgentResponse,
+                                         ConversationComponentProps, StopConversationRequest
 
-types/
-  conversation.ts                    — AgoraTokenData, ClientStartRequest, AgentResponse,
-                                       ConversationComponentProps, StopConversationRequest
+    visualizer-lab/
+      components/
+        AgentShaderVisualizer/         — WebGL shader visualizer used at /lab/visualizer only
+          index.tsx                    — React component
+          gl.ts                        — minimal WebGL helper (no deps)
+          shader.ts                    — vertex + fragment GLSL
 
-hooks/
-  use-mobile.tsx                     — useIsMobile() — returns true when viewport < 768 px
+  components/
+    ErrorBoundary.tsx                  — last-resort recovery UI for the in-call tree
+    LoadingSkeleton.tsx                — Suspense fallback for the lazy-loaded ConversationShell
+    ui/
+      button.tsx                       — shadcn button (consumed by ErrorBoundary + /lab)
+      dropdown-menu.tsx                — shadcn dropdown (consumed by /lab)
 
-lib/
-  agora.ts                           — DEFAULT_AGENT_UID constant (123456)
-  conversation.ts                    — pure helpers: normalizeTranscript, getMessageList,
-                                       getCurrentInProgressMessage, mapAgentVisualizerState,
-                                       normalizeTimestampMs, toMessageListItem
-  utils.ts                           — cn() (clsx + tailwind-merge)
+  hooks/
+    use-mobile.tsx                     — useIsMobile() — viewport < 768 px
 
-DOCS/
-  GUIDE.md                           — step-by-step build guide
-  TEXT_STREAMING_GUIDE.md            — transcription/text-streaming deep-dive
+  lib/
+    utils.ts                           — cn() (clsx + tailwind-merge)
+
+  types/
+    env.d.ts                           — ProcessEnv index-signature augment
+    jsx.d.ts                           — JSX.IntrinsicElements augment
+    react-jsx.d.ts                     — /// <reference types="react" />
+
+docs/
+  GUIDE.md                             — step-by-step build guide
+  TEXT_STREAMING_GUIDE.md              — transcription/text-streaming deep-dive
+  plans/                               — dated design docs (not implementation reference)
 ```
 
 ---
@@ -74,7 +102,7 @@ DOCS/
 | `agora-rtc-react`            | RTC hooks: `useJoin`, `useLocalMicrophoneTrack`, `usePublish`, `useRemoteUsers`, `useClientEvent`    |
 | `agora-rtm`                  | RTM transport — carries transcript messages from agent to browser                                    |
 | `agora-agent-client-toolkit` | `AgoraVoiceAI` runtime plus core types: `TurnStatus`, `TranscriptHelperItem`, `TranscriptHelperMode` |
-| `agora-agent-uikit`          | Pre-built components: `AgentVisualizer`, `ConvoTextStream`, `MicButtonWithVisualizer` (from `/rtc`)  |
+| `agora-agent-uikit`          | Type exports (`AgentVisualizerState`, `IMessageListItem`). Runtime components are not rendered in the main flow. |
 
 ### Server-side
 
@@ -89,15 +117,16 @@ DOCS/
 
 All vars live in `.env.local` (gitignored). `env.local.example` is the source of truth.
 
-| Variable                     | Side                    | Purpose                                                                                                  |
-| ---------------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_AGORA_APP_ID`   | client+server           | Agora project App ID                                                                                     |
-| `NEXT_AGORA_APP_CERTIFICATE` | server only             | Signs tokens — never expose client-side                                                                  |
-| `NEXT_PUBLIC_AGENT_UID`      | client+server, optional | Agent UID override. Defaults to `123456` from `lib/agora.ts`, so the quickstart runs without setting it. |
-| `NEXT_LLM_URL`               | server only, optional   | Any OpenAI-compatible chat completions endpoint for the optional BYOK LLM block                          |
-| `NEXT_LLM_API_KEY`           | server only, optional   | LLM API key for the optional BYOK LLM block                                                              |
-| `NEXT_DEEPGRAM_API_KEY`      | server only, optional   | Deepgram STT API key for the optional BYOK STT block                                                     |
-| `NEXT_ELEVENLABS_API_KEY`    | server only, optional   | ElevenLabs TTS API key for the optional BYOK TTS block                                                   |
+| Variable                     | Side                    | Purpose                                                                                                                         |
+| ---------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_AGORA_APP_ID`   | client+server           | Agora project App ID                                                                                                            |
+| `NEXT_AGORA_APP_CERTIFICATE` | server only             | Signs tokens — never expose client-side                                                                                         |
+| `NEXT_PUBLIC_AGENT_UID`      | client+server, optional | Agent UID override. Defaults to `123456` from `src/features/conversation/lib/agora-config.ts`, so the quickstart runs unset.    |
+| `NEXT_AGENT_GREETING`        | server only, optional   | Overrides the agent's opening line. Read in `src/features/conversation/server/invite-agent-config.ts`.                          |
+| `NEXT_LLM_URL`               | server only, optional   | Any OpenAI-compatible chat completions endpoint for the optional BYOK LLM block                                                 |
+| `NEXT_LLM_API_KEY`           | server only, optional   | LLM API key for the optional BYOK LLM block                                                                                     |
+| `NEXT_DEEPGRAM_API_KEY`      | server only, optional   | Deepgram STT API key for the optional BYOK STT block                                                                            |
+| `NEXT_ELEVENLABS_API_KEY`    | server only, optional   | ElevenLabs TTS API key for the optional BYOK TTS block                                                                          |
 
 ---
 
@@ -109,7 +138,7 @@ Generates an Agora RTC+RTM combined token via `RtcTokenBuilder.buildTokenWithRtm
 
 - Query params: `?uid=<string>&channel=<string>` (both optional)
 - Returns: `{ token, uid: string, channel: string }`
-- Called by: `LandingPage` on session start and on token renewal
+- Called by: `useAgoraSession` on session start and on token renewal
 
 **Note:** RTM access requires `buildTokenWithRtm` — a plain `buildTokenWithUid` token will not grant RTM privileges.
 
@@ -119,7 +148,7 @@ Generates an Agora RTC+RTM combined token via `RtcTokenBuilder.buildTokenWithRtm
 
 Starts an Agora ConvoAI agent using `agora-agent-server-sdk`.
 
-**Input** (`ClientStartRequest`): `{ requester_id, channel_name, input_modalities?, output_modalities? }`
+**Input** (`ClientStartRequest`): `{ requester_id, channel_name }`
 
 **What it does:**
 
@@ -129,13 +158,10 @@ Starts an Agora ConvoAI agent using `agora-agent-server-sdk`.
 4. `await session.start()` → returns agent ID.
 5. Returns `AgentResponse: { agent_id, create_ts, state }`.
 
-**Key configuration (edit in this file):**
+**Where to edit:**
 
-- `ADA_PROMPT` / `GREETING` — agent persona and opening line
-- `turnDetection.config` — VAD sensitivity (`speech_threshold`, `silence_duration_ms`, `interrupt_duration_ms`, `prefix_padding_ms`)
-- `advancedFeatures: { enable_rtm: true }` — required for RTM transcript delivery
-- `model: 'gpt-4o-mini'` in `OpenAI(...)` — LLM model
-- `voiceId: 'English_captivating_female1'` in `MiniMaxTTS(...)` — default TTS voice
+- System prompt + greeting: `src/features/conversation/server/invite-agent-config.ts` (`ADA_PROMPT`, `GREETING`, `AGENT_UID`).
+- Pipeline plumbing (VAD, model, voice): `src/app/api/invite-agent/route.ts`.
 
 **Turn detection** uses the current (non-deprecated) API:
 
@@ -167,19 +193,19 @@ Custom LLM proxy. Point the agent at your deployed URL to intercept LLM calls an
 
 ## 6. Components
 
-### `LandingPage`
+### `LandingPage` (`src/features/conversation/components/LandingPage.tsx`)
 
-- On "Try it now!": preloads `agora-rtc-react` + `agora-rtm` modules → runs `Promise.all([inviteAgent, rtmLogin])` in parallel → renders `ConversationComponent`.
-- Owns the `rtmClient` lifecycle: creates, logs in, subscribes before mounting `ConversationComponent`; calls `rtmClient.logout()` on end.
-- Token renewal: `handleTokenWillExpire(uid)` fetches separate RTC and RTM renewal tokens, then `ConversationComponent` renews each transport separately.
+- Editorial pre-call screen: drifting ambient blobs, italic serif headline, ink CTA pill.
+- Delegates all orchestration to `useAgoraSession()` (`src/features/conversation/hooks/useAgoraSession.ts`), which exposes `startConversation`, `endConversation`, `handleTokenWillExpire`, and the relevant session state.
+- On start: preloads `agora-rtc-react` + `agora-rtm` → `Promise.all([inviteAgent, rtmLogin])` → renders `<AgoraProvider><ConversationShell>`.
 
 ---
 
-### `ConversationComponent`
+### `ConversationShell` (`src/features/conversation/components/ConversationShell.tsx`)
 
 Core real-time component. Must be inside `AgoraRTCProvider`.
 
-**StrictMode guard:** `isReady` state, set via `setTimeout(..., 0)` in a `useEffect`. Both `useJoin(config, isReady)` and `useLocalMicrophoneTrack(isReady)` are gated on it to prevent double-initialization.
+**StrictMode guard:** `useStrictModeReady()` returns a boolean. Both `useJoin(config, isReady)` and `useLocalMicrophoneTrack(isReady)` gate on it to prevent double-initialization.
 
 **Hook ownership:**
 
@@ -187,26 +213,29 @@ Core real-time component. Must be inside `AgoraRTCProvider`.
 - `useLocalMicrophoneTrack` owns track lifecycle — do not call `.close()` manually
 - `usePublish` owns publish state — mute via `track.setEnabled()` only
 
-**Transcript + agent state:** Managed with raw `AgoraVoiceAI` from `agora-agent-client-toolkit`. `AgoraVoiceAI.init()` runs in a `useEffect` gated on `isReady && joinSuccess` — this fires exactly once, past the StrictMode double-mount cycle. Transcript and agent state are tracked via `useState` + `ai.on(TRANSCRIPT_UPDATED, ...)` / `ai.on(AGENT_STATE_CHANGED, ...)`. `uid="0"` remapping (local user sentinel → `client.uid`) happens in a `useMemo` over the raw transcript.
+**Transcript + agent state:** `useAgoraVoiceAI({ client, rtmClient, channel, enabled: isReady && joinSuccess })` owns `AgoraVoiceAI.init()`. It runs the init exactly once past the StrictMode double-mount cycle and returns `{ rawTranscript, agentState }`. `uid="0"` remapping (local user sentinel → `client.uid`) happens in a `useMemo` via `normalizeTranscript` over the raw transcript.
 
-**Transcript state:**
+**Derived state:**
 
-- `messageList` — completed + interrupted turns (`status !== IN_PROGRESS`) mapped locally into `IMessageListItem`
-- `currentInProgressMessage` — the single in-progress turn, if any
+- `isAgentConnected` — `useMemo(() => remoteUsers.some(…))`. No separate state; `useRemoteUsers` already tracks user-joined/user-left internally.
+- `messageList` — completed + interrupted turns (`status !== IN_PROGRESS`) via `getMessageList`.
+- `currentInProgressMessage` — the single in-progress turn, if any.
+
+**Token renewal:** `useTokenRefresh({ client, rtmClient, onTokenWillExpire })` subscribes to `token-privilege-will-expire` and calls `client.renewToken` + `rtmClient.renewToken` in parallel, reading `client.uid` at handler time.
 
 **View layer (Aria):**
 
-- `Persona`, `Waveform`, `Transcript`, `Controls`, `VoiceSelector`, `Ambient` under `components/aria/`. No uikit runtime component is rendered in the main flow.
-- State mapping: `mapToAriaState(visualizerState, !isEnabled, isEnded)` from `components/aria/types.ts` collapses the existing `AgentVisualizerState` + local mute + end flags into Aria's 7-state enum (`idle` / `listening` / `thinking` / `speaking` / `muted` / `error` / `ended`).
-- Transcript data comes from `messageList` + `currentInProgressMessage` (existing derivations from `lib/conversation.ts`) mapped into `{ speaker, text, key }` where `key = ${uid}-${turn_id}` to stay unique (turn_id is per-speaker, not globally unique).
+- `Persona`, `Waveform`, `Transcript`, `Controls`, `VoiceSelector`, `MicPicker`, `Ambient` directly under `src/features/conversation/components/` (no `aria/` subfolder). No uikit runtime component is rendered.
+- State mapping: `mapToAriaState(visualizerState, agentState, isMuted)` from `components/aria-state.ts` collapses `AgentVisualizerState` + agent state + local mute into Aria's 8-state enum (`connecting` / `preparing` / `idle` / `listening` / `thinking` / `speaking` / `muted` / `error`).
+- Transcript data comes from `messageList` + `currentInProgressMessage` mapped into `{ speaker, text, key }` where `key = ${uid}-${turn_id}` (turn_id is per-speaker, not globally unique).
 
 **Shader visualizer (lab-only):**
 
-- `AgentShaderVisualizer` (`components/AgentShaderVisualizer/`) is kept in the codebase and rendered at `/lab/visualizer`. Not used in the main conversation flow. Useful as a reference for anyone tapping `MediaStreamTrack` for custom audio-reactive UI.
+- `AgentShaderVisualizer` (`src/features/visualizer-lab/components/AgentShaderVisualizer/`) is kept in the codebase and rendered at `/lab/visualizer`. Not used in the main conversation flow. Useful as a reference for anyone tapping `MediaStreamTrack` for custom audio-reactive UI.
 
 ---
 
-### `MicrophoneSelector`
+### `MicPicker` (`src/features/conversation/components/MicPicker.tsx`)
 
 Device picker via `AgoraRTC.getMicrophones()`. Hot-swap detection via `AgoraRTC.onMicrophoneChanged`. Switching calls `localMicrophoneTrack.setDevice(deviceId)`.
 
@@ -215,34 +244,38 @@ Device picker via `AgoraRTC.getMicrophones()`. Hot-swap detection via `AgoraRTC.
 ## 7. Data Flow
 
 ```
-User clicks "Try it now!"
+User clicks "Start the call"  (LandingPage)
   │
-  ├─ GET /api/generate-agora-token → { token, uid, channel }
-  ├─ Promise.all:
-  │   ├─ POST /api/invite-agent → { agent_id }   (Agora cloud starts agent)
-  │   └─ rtmClient.login(token) + rtmClient.subscribe(channel)
-  │
-  └─ LandingPage renders <AgoraRTCProvider><ConversationComponent>
+  └─ useAgoraSession.startConversation():
         │
-        ├─ isReady (setTimeout) → useJoin joins RTC channel
-        ├─ useLocalMicrophoneTrack creates mic track
-        ├─ usePublish publishes mic
+        ├─ GET /api/generate-agora-token → { token, uid, channel }
+        ├─ Promise.all:
+        │   ├─ POST /api/invite-agent → { agent_id }   (Agora cloud starts agent)
+        │   └─ rtmClient.login(token) + rtmClient.subscribe(channel)
         │
-        ├─ joinSuccess=true → AgoraVoiceAI.init() effect fires (gated on isReady && joinSuccess)
-        │   └─ ai.subscribeMessage(channel) — binds RTC stream-message + RTM message events
-        │
-        ├─ Agent joins channel → RemoteUser auto-subscribes → agent audio plays through hidden RemoteUser
-        │
-        ├─ Agent speaks:
-        │   RTM → AgoraVoiceAI → TRANSCRIPT_UPDATED → UID remap → setState
-        │   → local transcript adapter → ConvoTextStream renders chat bubbles
-        │
-        └─ User clicks the `X` exit button
-            → POST /api/stop-conversation
-            → LandingPage: rtmClient.logout()
-            → ConversationComponent unmounts
-            → useJoin cleanup: client.leave()
-            → AgoraVoiceAI effect cleanup: ai.unsubscribe() + ai.destroy()
+        └─ setShowConversation(true) → render <AgoraRTCProvider><ConversationShell>
+              │
+              ├─ useStrictModeReady → isReady=true → useJoin joins RTC channel
+              ├─ useLocalMicrophoneTrack creates mic track
+              ├─ usePublish publishes mic
+              │
+              ├─ joinSuccess=true → useAgoraVoiceAI effect fires (enabled=isReady && joinSuccess)
+              │   └─ ai.subscribeMessage(channel) — binds RTC stream-message + RTM message events
+              │
+              ├─ Agent joins channel → RemoteUser auto-subscribes → agent audio plays through hidden RemoteUser
+              │
+              ├─ Agent speaks:
+              │   RTM → AgoraVoiceAI → TRANSCRIPT_UPDATED → setRawTranscript
+              │   → normalizeTranscript (UID remap + spacing) → messageList/currentInProgressMessage
+              │   → Transcript renders bubbles + live caret
+              │
+              └─ User clicks end-call button
+                  → onEndConversation → useAgoraSession.endConversation
+                  → POST /api/stop-conversation (fire-and-forget)
+                  → rtmClient.logout()
+                  → setShowConversation(false) → ConversationShell unmounts
+                  → useJoin cleanup: client.leave()
+                  → useAgoraVoiceAI cleanup: ai.unsubscribe() + ai.destroy()
 ```
 
 ---
@@ -251,22 +284,24 @@ User clicks "Try it now!"
 
 1. **`useJoin` owns `client.leave()`** — never call it manually. Causes `AgoraRTCError WS_ABORT: LEAVE`.
 
-2. **StrictMode double-init** — `isReady` + `setTimeout` guard prevents dual mic track creation and double `AgoraVoiceAI` init. Do not remove. The `AgoraVoiceAI.init()` effect is also gated on `isReady && joinSuccess` — by the time `joinSuccess` becomes `true`, the StrictMode cycle is done and the effect runs exactly once.
+2. **StrictMode double-init** — `useStrictModeReady` (`setTimeout(fn,0)` + synchronous cleanup) prevents dual mic track creation and double `AgoraVoiceAI` init. Do not remove. `useAgoraVoiceAI`'s init effect is also gated on `enabled: isReady && joinSuccess` — by the time `joinSuccess` flips to `true`, the StrictMode cycle is done and the effect runs exactly once.
 
-3. **`NEXT_PUBLIC_AGENT_UID` must match exactly** — the component compares `user.uid.toString() === agentUID`. A mismatch means `isAgentConnected` never fires.
+3. **`NEXT_PUBLIC_AGENT_UID` must match exactly** — `ConversationShell` compares `user.uid.toString() === agentUID` when deriving `isAgentConnected`. A mismatch means the UI never flips past `connecting`.
 
 4. **RTM token** — must use `RtcTokenBuilder.buildTokenWithRtm`. A plain RTC token silently fails RTM login.
 
-5. **UID remapping** — `uid="0"` is the toolkit's sentinel for local user speech. The uikit treats `uid===0` as AI. Without remapping, user speech renders on the wrong side.
+5. **UID remapping** — `uid="0"` is the toolkit's sentinel for local user speech. The uikit treats `uid===0` as AI. Without `normalizeTranscript`, user speech renders on the wrong side.
 
 6. **`enable_rtm: true`** — without this in `advancedFeatures`, the agent joins but never sends RTM messages, so `TRANSCRIPT_UPDATED` never fires.
 
-7. **Tailwind + uikit** — `tailwind.config.ts` must include `./node_modules/agora-agent-uikit/dist/**/*.{js,mjs}` or uikit component styles won't apply.
+7. **Tailwind + uikit** — `tailwind.config.ts` must include `./node_modules/agora-agent-uikit/dist/**/*.{js,mjs}` or uikit component styles won't apply. Its `content` glob also scans `./src/**` after the `src/` layout migration.
 
 8. **Custom LLM proxy needs public URL** — `localhost` is not reachable by Agora's cloud. Use `ngrok http 3000` in dev.
 
-9. **Deprecated turn detection API** — use `turnDetection.config.start_of_speech` / `end_of_speech`. The old `type: 'agora_vad'` flat structure is deprecated and will be removed.
+9. **Deprecated turn detection API** — use `turnDetection.config.start_of_speech` / `end_of_speech`. The old `type: 'agora_vad'` flat structure is deprecated.
 
-10. **Shader visualizer track stability** — `getMediaStreamTrack()` on `IRemoteAudioTrack` / `IMicrophoneAudioTrack` may return a new object per call. Only the `/lab/visualizer` shader consumer needs to care; memoize on the upstream Agora track reference when passing tracks to `useAudioFFT`.
+10. **Shader visualizer track stability** — `getMediaStreamTrack()` on `IRemoteAudioTrack` / `IMicrophoneAudioTrack` may return a new object per call. Memoize on the upstream Agora track reference when passing tracks to `useAudioFFT`.
 
 11. **Transcript `turn_id` uniqueness** — `turn_id` is scoped per speaker. Use a composite React key (`${uid}-${turn_id}`) when rendering transcript entries, otherwise user + agent turns with the same index collide.
+
+12. **No `useState` + effect for derived data** — React 19's `react-hooks/set-state-in-effect` rule errors on patterns like `useEffect(() => setFoo(derived), [deps])`. Use `useMemo` instead. See `isAgentConnected` in `ConversationShell`.

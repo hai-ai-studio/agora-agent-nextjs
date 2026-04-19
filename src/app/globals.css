@@ -1,0 +1,182 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Light-mode tokens. Aria surfaces read these via Tailwind utilities (bg-ink, text-ink-3,
+   border-line, etc. — wired in tailwind.config.ts). The legacy HSL block below remains for
+   shadcn components at /lab/visualizer. All animations and component styling live in JSX
+   (Tailwind utilities + motion/react components); globals.css is tokens + body base only. */
+:root {
+  color-scheme: light;
+
+  /* --- Aria editorial token set (main UX) --- */
+  --bg: #fafaf7;
+  --bg-2: #f4f3ee;
+  --ink: #0b0b0c;
+  --ink-2: #2a2a2d;
+  --ink-3: #6b6b70;
+  --ink-4: #a7a7ac;
+  --line: rgba(11, 11, 12, 0.08);
+  --line-2: rgba(11, 11, 12, 0.14);
+  --accent: #0b0b0c;
+
+  --wf-agent: #0b0b0c;
+  --wf-user: #8a8a90;
+
+  --pill-idle: #0b0b0c;
+  --pill-listen: #16a34a;
+  --pill-think: #b45309;
+  --pill-speak: #1d4ed8;
+  --pill-muted: #6b6b70;
+  --pill-error: #b91c1c;
+
+  /* --- Legacy HSL token set (kept for shadcn components + /lab route) --- */
+
+  --background:       220 20% 98%;
+  --surface:          220 18% 96%;
+  --surface-elevated: 220 16% 94%;
+
+  --card:             0 0% 100%;
+  --card-foreground:  220 25% 12%;
+  --popover:          0 0% 100%;
+  --popover-foreground: 220 25% 12%;
+  --muted:            220 14% 94%;
+
+  --border:           220 13% 88%;
+  --input:            220 13% 88%;
+
+  --foreground:       220 25% 12%;
+  --muted-foreground: 220 10% 42%;
+
+  --primary:            194 100% 42%;
+  --primary-foreground: 220 25% 12%;
+
+  --secondary:            220 14% 94%;
+  --secondary-foreground: 220 25% 12%;
+
+  /* shadcn --accent intentionally overrides the Aria --accent above. Aria surfaces
+     don't consume var(--accent) directly (Tailwind reads it as the `accent` color); the
+     shadcn HSL value is needed for the /lab route's shadcn components. */
+  --accent:            194 100% 42%;
+  --accent-foreground: 220 25% 12%;
+
+  --destructive:            0 72% 52%;
+  --destructive-foreground: 0 0% 100%;
+
+  --ring: 194 100% 42%;
+  --radius: 0.5rem;
+
+  --chart-1: 194 100% 42%;
+  --chart-2: 220 10% 45%;
+  --chart-3: 220 10% 35%;
+  --chart-4: 0 72% 52%;
+  --chart-5: 150 50% 40%;
+
+  --sidebar-background:         0 0% 100%;
+  --sidebar-foreground:         220 25% 12%;
+  --sidebar-primary:            194 100% 42%;
+  --sidebar-primary-foreground: 220 25% 12%;
+  --sidebar-accent:             220 14% 94%;
+  --sidebar-accent-foreground:  220 25% 12%;
+  --sidebar-border:             220 13% 88%;
+  --sidebar-ring:               194 100% 42%;
+
+  --viz-stop-1: 225 92% 50%;
+  --viz-stop-2: 220 14% 78%;
+  --viz-stop-3: 285 58% 48%;
+}
+
+/* Tailwind-animate needs explicit keyframes for the accordion slide utilities used by
+   Radix-based shadcn components at /lab/visualizer. Everything else lives in JSX. */
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
+
+/* next/font injects --font-sans / --font-serif / --font-mono on <html> via app/layout.tsx. */
+html,
+body,
+#__next {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'ss01', 'cv11';
+  overflow: hidden;
+}
+
+/* Dark-mode token overrides. Only root variables + structural tints — Ambient.tsx reads
+   prefers-color-scheme directly for blob gradients so those don't live here. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    /* Aria token set */
+    --bg: #0c0c0e;
+    --bg-2: #16161a;
+    --ink: #f2f2ee;
+    --ink-2: #c6c6c9;
+    --ink-3: #8a8a8e;
+    --ink-4: #5a5a5e;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-2: rgba(255, 255, 255, 0.14);
+    --accent: #f2f2ee;
+
+    --wf-agent: #f2f2ee;
+    --wf-user: #6a6a70;
+
+    --pill-idle: #f2f2ee;
+    --pill-listen: #22c55e;
+    --pill-think: #d97706;
+    --pill-speak: #3b82f6;
+    --pill-muted: #6a6a70;
+    --pill-error: #ef4444;
+
+    /* Legacy HSL token set — keeps shadcn components at /lab/visualizer working. */
+    --background:       220 14% 5%;
+    --surface:          220 12% 9%;
+    --surface-elevated: 220 10% 13%;
+    --card:             220 12% 9%;
+    --card-foreground:  220 15% 95%;
+    --popover:          220 10% 13%;
+    --popover-foreground: 220 15% 95%;
+    --muted:            220 12% 9%;
+    --border:           220 10% 18%;
+    --input:            220 10% 18%;
+    --foreground:       220 15% 95%;
+    --muted-foreground: 220 10% 50%;
+    --primary:            194 100% 50%;
+    --primary-foreground: 220 14% 5%;
+    --secondary:            220 10% 13%;
+    --secondary-foreground: 220 15% 95%;
+    --accent:            194 100% 50%;
+    --accent-foreground: 220 14% 5%;
+    --destructive:            0 72% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --ring: 194 100% 50%;
+    --chart-1: 194 100% 50%;
+    --chart-2: 220 10% 60%;
+    --chart-3: 220 10% 40%;
+    --chart-4: 0 72% 58%;
+    --chart-5: 150 60% 45%;
+    --sidebar-background:         220 12% 9%;
+    --sidebar-foreground:         220 15% 95%;
+    --sidebar-primary:            194 100% 50%;
+    --sidebar-primary-foreground: 220 14% 5%;
+    --sidebar-accent:             220 10% 13%;
+    --sidebar-accent-foreground:  220 15% 95%;
+    --sidebar-border:             220 10% 18%;
+    --sidebar-ring:               194 100% 50%;
+    --viz-stop-1: 194 100% 58%;
+    --viz-stop-2: 215 42% 72%;
+    --viz-stop-3: 272 62% 72%;
+  }
+}

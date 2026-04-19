@@ -135,7 +135,7 @@ Before starting work on a major feature:
 
 When changing implementation:
 - Update relevant sections in `README.md`
-- Update `DOCS/GUIDE.md` if the change affects the tutorial
+- Update `docs/GUIDE.md` if the change affects the tutorial
 - Update `agents.md` if the architecture changes
 - Keep code comments in sync with the code
 

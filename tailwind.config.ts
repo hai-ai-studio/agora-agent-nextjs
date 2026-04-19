@@ -1,20 +1,37 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-    darkMode: ["class"],
+    darkMode: "media",
     content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "*.{js,ts,jsx,tsx,mdx}",
+    "./src/**/*.{js,ts,jsx,tsx,mdx}",
     "./node_modules/agora-agent-uikit/dist/**/*.{js,mjs}",
   ],
   theme: {
   	extend: {
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+        // Aria editorial fonts — loaded via next/font in app/layout.tsx.
+        serif: ['var(--font-serif)', 'Georgia', 'serif'],
+        mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
       },
   		colors: {
+        // --- Aria editorial palette. These are hex/rgba variables that don't accept the
+        // <alpha-value> pattern (hex isn't splittable at utility time). Use a fixed reference
+        // and approximate alpha via Tailwind's bg-black/white alpha utilities where needed.
+        ink: 'var(--ink)',
+        'ink-2': 'var(--ink-2)',
+        'ink-3': 'var(--ink-3)',
+        'ink-4': 'var(--ink-4)',
+        bg: 'var(--bg)',
+        'bg-2': 'var(--bg-2)',
+        line: 'var(--line)',
+        'line-2': 'var(--line-2)',
+        'pill-listen': 'var(--pill-listen)',
+        'pill-think': 'var(--pill-think)',
+        'pill-speak': 'var(--pill-speak)',
+        'pill-muted': 'var(--pill-muted)',
+        'pill-error': 'var(--pill-error)',
+
         // The <alpha-value> placeholder enables Tailwind opacity modifiers like
         // bg-primary/90, bg-card/80, bg-destructive/10, etc.
         // Without it, hsl(var(--token)) can't accept an alpha channel at utility-class time.
@@ -94,8 +111,13 @@ const config: Config = {
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
-  		}
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+  		},
+      transitionTimingFunction: {
+        // Shared editorial ease — used on non-animation transitions like stage-grid
+        // column resize. Kept so `ease-aria-out` utility class still works in JSX.
+        'aria-out': 'cubic-bezier(0.16, 1, 0.3, 1)',
+      },
   	}
   },
   plugins: [require("tailwindcss-animate")],

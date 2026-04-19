@@ -28,7 +28,7 @@ Optional convenience overrides:
 
 - `NEXT_PUBLIC_AGENT_UID` defaults to `123456`
 
-The default agent configuration in [`app/api/invite-agent/route.ts`](app/api/invite-agent/route.ts) uses Agora-managed defaults for STT, LLM, and TTS, so no additional vendor API keys are required for the base quickstart.
+The default agent configuration in [`src/app/api/invite-agent/route.ts`](src/app/api/invite-agent/route.ts) uses Agora-managed defaults for STT, LLM, and TTS, so no additional vendor API keys are required for the base quickstart. The system prompt and greeting live in [`src/features/conversation/server/invite-agent-config.ts`](src/features/conversation/server/invite-agent-config.ts).
 
 ## Architecture
 
@@ -57,7 +57,7 @@ The browser uses the Next.js app for token generation and agent lifecycle calls,
 
 ## Optional BYOK
 
-Optional BYOK examples remain commented in [`app/api/invite-agent/route.ts`](app/api/invite-agent/route.ts).
+Optional BYOK examples remain commented in [`src/app/api/invite-agent/route.ts`](src/app/api/invite-agent/route.ts).
 
 Examples:
 
@@ -71,17 +71,21 @@ Examples:
 
 ## Repo Map
 
-- `app/api/generate-agora-token/route.ts` issues RTC + RTM tokens
-- `app/api/invite-agent/route.ts` starts the agent session
-- `app/api/stop-conversation/route.ts` stops the agent session
-- `components/LandingPage.tsx` editorial pre-call screen and session orchestration (RTM login, agent invite)
-- `components/ConversationComponent.tsx` Agora hooks + StrictMode guards + `AgoraVoiceAI` wiring; renders the Aria layout
-- `components/aria/` Aria-style view layer — `Ambient`, `Persona`, `Waveform`, `Transcript`, `Controls`, `VoiceSelector`
-- `components/AgentShaderVisualizer/` WebGL-shader visualizer used by the `/lab/visualizer` playground (not in the main flow)
-- `app/lab/visualizer/` standalone page for tuning the shader visualizer
+Source lives under `src/`. Feature code is co-located under `src/features/<feature>/`.
+
+- `src/app/api/generate-agora-token/route.ts` issues RTC + RTM tokens
+- `src/app/api/invite-agent/route.ts` starts the agent session
+- `src/app/api/stop-conversation/route.ts` stops the agent session
+- `src/features/conversation/components/LandingPage.tsx` editorial pre-call screen; delegates orchestration to `useAgoraSession`
+- `src/features/conversation/components/ConversationShell.tsx` Agora RTC hooks + Aria layout
+- `src/features/conversation/hooks/` `useStrictModeReady`, `useAgoraVoiceAI`, `useTokenRefresh`, `useAgoraSession`
+- `src/features/conversation/components/` Aria view layer — `Ambient`, `Persona`, `Waveform`, `Transcript`, `Controls`, `VoiceSelector`, `MicPicker` (plus `aria-state.ts` for the view-state enum + copy)
+- `src/features/conversation/server/invite-agent-config.ts` system prompt + greeting (edit to change persona)
+- `src/features/visualizer-lab/components/AgentShaderVisualizer/` WebGL-shader visualizer used by the `/lab/visualizer` playground (not in the main flow)
+- `src/app/lab/visualizer/` standalone page for tuning the shader visualizer
 
 ## More Docs
 
-- [DOCS/GUIDE.md](./DOCS/GUIDE.md)
-- [DOCS/TEXT_STREAMING_GUIDE.md](./DOCS/TEXT_STREAMING_GUIDE.md)
+- [docs/GUIDE.md](./docs/GUIDE.md)
+- [docs/TEXT_STREAMING_GUIDE.md](./docs/TEXT_STREAMING_GUIDE.md)
 - [Agent UIKit Preview](https://agoraio-conversational-ai.github.io/agent-uikit/)

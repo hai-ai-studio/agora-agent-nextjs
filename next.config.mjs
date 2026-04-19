@@ -12,11 +12,6 @@ const nextConfig = {
   turbopack: {
     root: rootDir,
   },
-  experimental: {
-    webpackBuildWorker: true,
-    parallelServerBuildTraces: true,
-    parallelServerCompiles: true,
-  },
 };
 
 export default nextConfig;
