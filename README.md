@@ -86,6 +86,9 @@ Source lives under `src/`. Feature code is co-located under `src/features/<featu
 
 ## More Docs
 
-- [docs/GUIDE.md](./docs/GUIDE.md)
-- [docs/TEXT_STREAMING_GUIDE.md](./docs/TEXT_STREAMING_GUIDE.md)
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — top-level map (directory tree, data flow, API, components)
+- [AGENTS.md](./AGENTS.md) — operational rules for AI agents, gotchas, styling conventions
+- [docs/guides/GUIDE.md](./docs/guides/GUIDE.md) — step-by-step build guide
+- [docs/guides/TEXT_STREAMING_GUIDE.md](./docs/guides/TEXT_STREAMING_GUIDE.md) — transcript / text-streaming deep-dive
+- [docs/decisions/](./docs/decisions/) — ADRs
 - [Agent UIKit Preview](https://agoraio-conversational-ai.github.io/agent-uikit/)

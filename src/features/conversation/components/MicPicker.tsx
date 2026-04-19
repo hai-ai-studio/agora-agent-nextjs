@@ -139,7 +139,7 @@ export function MicPicker({ localMicrophoneTrack }: MicPickerProps) {
     <div className="mic-picker relative inline-flex">
       <button
         type="button"
-        className="flex h-11 w-5 cursor-pointer items-center justify-center rounded-full border-none bg-transparent text-ink-3 transition-colors duration-150 hover:bg-black/[0.06] hover:text-ink"
+        className="flex h-11 w-5 cursor-pointer items-center justify-center rounded-full border-none bg-transparent text-ink-3 transition-colors duration-150 hover:bg-black/5 hover:text-ink"
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -156,16 +156,16 @@ export function MicPicker({ localMicrophoneTrack }: MicPickerProps) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 4 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
-          className="absolute bottom-[calc(100%+12px)] left-0 z-[5] max-h-60 w-[260px] max-w-[calc(100vw-32px)] overflow-y-auto rounded-[18px] border border-line bg-white/95 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.12)] backdrop-blur-[24px] supports-[backdrop-filter]:bg-white/95 max-[640px]:left-auto max-[640px]:right-0"
+          className="absolute bottom-[calc(100%+12px)] left-0 z-10 max-h-60 w-64 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-line bg-white/95 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.12)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/95 max-sm:left-auto max-sm:right-0"
         >
-          <div className="px-2.5 pb-1.5 pt-2 text-[10px] font-medium uppercase tracking-[0.08em] text-ink-4">
+          <div className="px-2.5 pb-1.5 pt-2 text-[10px] font-medium uppercase tracking-widest text-ink-4">
             Microphone
           </div>
           {devices.map((device) => (
             <button
               key={device.deviceId}
               type="button"
-              className={`flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-[10px] border-none bg-transparent px-2.5 py-2 text-left font-sans text-[13px] transition-colors duration-[120ms] hover:bg-bg-2 ${
+              className={`flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-2 text-left font-sans text-xs transition-colors duration-100 hover:bg-bg-2 ${
                 device.deviceId === currentDeviceId ? 'text-ink' : 'text-ink-2'
               }`}
               onClick={() => handleChange(device.deviceId)}
@@ -174,7 +174,7 @@ export function MicPicker({ localMicrophoneTrack }: MicPickerProps) {
                 {device.label}
               </span>
               {device.deviceId === currentDeviceId && (
-                <span className="text-[12px] text-ink">✓</span>
+                <span className="text-xs text-ink">✓</span>
               )}
             </button>
           ))}

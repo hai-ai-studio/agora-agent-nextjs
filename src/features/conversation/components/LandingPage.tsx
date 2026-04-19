@@ -72,7 +72,7 @@ export default function LandingPage() {
         {agentJoinError && (
           <div
             role="alert"
-            className="fixed left-1/2 top-16 z-10 max-w-[min(90vw,420px)] -translate-x-1/2 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-[14px] py-2.5 text-center text-[13px] text-[#7f1d1d] shadow-[0_8px_24px_rgba(0,0,0,0.08)] dark:border-[rgba(239,68,68,0.35)] dark:bg-[rgba(239,68,68,0.12)] dark:text-[#fca5a5] dark:shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+            className="fixed left-1/2 top-16 z-10 max-w-[min(90vw,28rem)] -translate-x-1/2 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3.5 py-2.5 text-center text-xs text-[#7f1d1d] shadow-[0_8px_24px_rgba(0,0,0,0.08)] dark:border-[rgba(239,68,68,0.35)] dark:bg-[rgba(239,68,68,0.12)] dark:text-[#fca5a5] dark:shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
           >
             Failed to connect with AI agent. The conversation may not work as
             expected.
@@ -105,9 +105,9 @@ export default function LandingPage() {
     >
       <Ambient state="idle" />
 
-      <header className="relative z-[2] flex shrink-0 items-center justify-between px-6 py-[14px] max-[960px]:px-4 max-[960px]:py-3">
+      <header className="relative z-20 flex shrink-0 items-center justify-between px-6 py-3.5 max-lg:px-4 max-lg:py-3">
         <div className="flex items-center gap-2.5 text-ink">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ink text-white">
+          <div className="flex size-8 items-center justify-center rounded-full bg-ink text-white">
             <svg
               viewBox="0 0 24 24"
               width="18"
@@ -123,7 +123,7 @@ export default function LandingPage() {
               <circle cx="12" cy="12" r="11" opacity="0.2" />
             </svg>
           </div>
-          <span className="font-serif text-[22px] italic tracking-[-0.01em] max-[360px]:text-[18px]">
+          <span className="font-serif text-2xl italic tracking-[-0.01em] max-[360px]:text-lg">
             {ADA_AGENT_NAME}
             <span className="text-ink-4"> · </span>
             <span className="text-ink-3">Agora</span>
@@ -131,18 +131,18 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <main className="relative z-[1] flex min-h-0 flex-1 flex-col items-center justify-center gap-[18px] p-6">
+      <main className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6">
         <h1 className="text-center font-serif text-[clamp(40px,6vw,64px)] italic font-normal leading-none tracking-[-0.02em] text-ink">
           Say hi to {ADA_AGENT_NAME}.
         </h1>
-        <p className="max-w-[420px] text-center font-sans text-[15px] text-ink-3">
+        <p className="max-w-md text-center font-sans text-sm text-ink-3">
           A voice-first demo of Agora&apos;s Conversational AI Engine. Tap start
           and speak naturally &mdash; the agent listens, thinks, and replies in
           real time.
         </p>
 
         {showConversation && (!agoraData || !rtmClient) ? (
-          <p className="max-w-[420px] text-center font-sans text-[15px] text-ink-3">
+          <p className="max-w-md text-center font-sans text-sm text-ink-3">
             Failed to load conversation data.
           </p>
         ) : (
@@ -160,7 +160,7 @@ export default function LandingPage() {
             {isLoading ? (
               <>
                 <motion.span
-                  className="h-3.5 w-3.5 rounded-full border-2 border-white/35 border-t-white"
+                  className="size-3.5 rounded-full border-2 border-white/35 border-t-white"
                   animate={{ rotate: 360 }}
                   transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
                   aria-hidden="true"
@@ -181,13 +181,13 @@ export default function LandingPage() {
         )}
 
         {error && (
-          <p className="font-mono text-[12px] tracking-[-0.01em] text-pill-error">
+          <p className="font-mono text-xs tracking-[-0.01em] text-pill-error">
             {error}
           </p>
         )}
       </main>
 
-      <footer className="relative z-[2] flex items-center gap-2 px-6 pb-5 pt-[14px] font-mono text-[11px] uppercase tracking-[0.08em] text-ink-4">
+      <footer className="relative z-20 flex items-center gap-2 px-6 pb-5 pt-3.5 font-mono text-[11px] uppercase tracking-widest text-ink-4">
         <span>Powered by</span>
         <a
           href="https://agora.io/en/"

@@ -1,6 +1,6 @@
-# Agent Codex — agora-convoai-quickstart-nextjs
+# Architecture — agora-convoai-quickstart-nextjs
 
-> Machine-readable project map. Read this before touching any file.
+> Top-level map. Read this to orient. Agent-facing operational rules live in [`AGENTS.md`](./AGENTS.md). Decisions behind this structure live in [`docs/decisions/`](./docs/decisions/).
 
 ---
 
@@ -48,34 +48,28 @@ src/
         useAgoraVoiceAI.ts             — toolkit init + transcript/agent state + RTM error stream
         useTokenRefresh.ts             — renews RTC + RTM tokens on token-privilege-will-expire
         useAgoraSession.ts             — token fetch + agent invite + RTM lifecycle
+        useAudioFFT.ts                 — MediaStreamTrack → bass/mid/treble band averages (shared by Waveform + lab shader)
       lib/
         transcript.ts                  — pure helpers: normalizeTranscript, getMessageList,
                                          getCurrentInProgressMessage, normalizeTimestampMs,
                                          toMessageListItem, normalizeTranscriptSpacing
         visualizer-state.ts            — mapAgentVisualizerState (RTC + agent signals → AgentVisualizerState)
-        audio.ts                       — useAudioFFT hook (MediaStreamTrack → bass/mid/treble bands)
         agora-config.ts                — DEFAULT_AGENT_UID constant (123456)
       server/
         invite-agent-config.ts         — ADA_PROMPT, GREETING, AGENT_UID (imported by invite-agent route)
       types.ts                         — AgoraTokenData, ClientStartRequest, AgentResponse,
                                          ConversationComponentProps, StopConversationRequest
 
-    visualizer-lab/
-      components/
-        AgentShaderVisualizer/         — WebGL shader visualizer used at /lab/visualizer only
-          index.tsx                    — React component
-          gl.ts                        — minimal WebGL helper (no deps)
-          shader.ts                    — vertex + fragment GLSL
-
   components/
     ErrorBoundary.tsx                  — last-resort recovery UI for the in-call tree
     LoadingSkeleton.tsx                — Suspense fallback for the lazy-loaded ConversationShell
+    AgentShaderVisualizer/             — WebGL shader visualizer used at /lab/visualizer only
+      index.tsx                        — React component
+      gl.ts                            — minimal WebGL helper (no deps)
+      shader.ts                        — vertex + fragment GLSL
     ui/
       button.tsx                       — shadcn button (consumed by ErrorBoundary + /lab)
       dropdown-menu.tsx                — shadcn dropdown (consumed by /lab)
-
-  hooks/
-    use-mobile.tsx                     — useIsMobile() — viewport < 768 px
 
   lib/
     utils.ts                           — cn() (clsx + tailwind-merge)
@@ -86,9 +80,17 @@ src/
     react-jsx.d.ts                     — /// <reference types="react" />
 
 docs/
-  GUIDE.md                             — step-by-step build guide
-  TEXT_STREAMING_GUIDE.md              — transcription/text-streaming deep-dive
-  plans/                               — dated design docs (not implementation reference)
+  guides/
+    GUIDE.md                           — step-by-step build guide
+    TEXT_STREAMING_GUIDE.md            — transcription/text-streaming deep-dive
+  plans/
+    active/                            — in-flight plans
+    completed/                         — landed plans, historical record
+    tech-debt.md                       — running list of known debt
+  decisions/                           — ADRs, one per architectural choice
+  design/                              — Aria design language, motion policy, component catalog
+  architecture/                        — per-topic deep-dives (agora-flow, state-model, styling)
+  references/                          — pinned external API surfaces (agent-context)
 ```
 
 ---
@@ -225,7 +227,7 @@ Core real-time component. Must be inside `AgoraRTCProvider`.
 
 **View layer (Aria):**
 
-- `Persona`, `Waveform`, `Transcript`, `Controls`, `VoiceSelector`, `MicPicker`, `Ambient` directly under `src/features/conversation/components/` (no `aria/` subfolder). No uikit runtime component is rendered.
+- `Persona`, `Waveform`, `Transcript`, `Controls`, `VoiceSelector`, `MicPicker`, `Ambient` directly under `src/features/conversation/components/`. No uikit runtime component is rendered.
 - State mapping: `mapToAriaState(visualizerState, agentState, isMuted)` from `components/aria-state.ts` collapses `AgentVisualizerState` + agent state + local mute into Aria's 8-state enum (`connecting` / `preparing` / `idle` / `listening` / `thinking` / `speaking` / `muted` / `error`).
 - Transcript data comes from `messageList` + `currentInProgressMessage` mapped into `{ speaker, text, key }` where `key = ${uid}-${turn_id}` (turn_id is per-speaker, not globally unique).
 
@@ -280,28 +282,12 @@ User clicks "Start the call"  (LandingPage)
 
 ---
 
-## 8. Known Gotchas
+## Where to look next
 
-1. **`useJoin` owns `client.leave()`** — never call it manually. Causes `AgoraRTCError WS_ABORT: LEAVE`.
-
-2. **StrictMode double-init** — `useStrictModeReady` (`setTimeout(fn,0)` + synchronous cleanup) prevents dual mic track creation and double `AgoraVoiceAI` init. Do not remove. `useAgoraVoiceAI`'s init effect is also gated on `enabled: isReady && joinSuccess` — by the time `joinSuccess` flips to `true`, the StrictMode cycle is done and the effect runs exactly once.
-
-3. **`NEXT_PUBLIC_AGENT_UID` must match exactly** — `ConversationShell` compares `user.uid.toString() === agentUID` when deriving `isAgentConnected`. A mismatch means the UI never flips past `connecting`.
-
-4. **RTM token** — must use `RtcTokenBuilder.buildTokenWithRtm`. A plain RTC token silently fails RTM login.
-
-5. **UID remapping** — `uid="0"` is the toolkit's sentinel for local user speech. The uikit treats `uid===0` as AI. Without `normalizeTranscript`, user speech renders on the wrong side.
-
-6. **`enable_rtm: true`** — without this in `advancedFeatures`, the agent joins but never sends RTM messages, so `TRANSCRIPT_UPDATED` never fires.
-
-7. **Tailwind + uikit** — `tailwind.config.ts` must include `./node_modules/agora-agent-uikit/dist/**/*.{js,mjs}` or uikit component styles won't apply. Its `content` glob also scans `./src/**` after the `src/` layout migration.
-
-8. **Custom LLM proxy needs public URL** — `localhost` is not reachable by Agora's cloud. Use `ngrok http 3000` in dev.
-
-9. **Deprecated turn detection API** — use `turnDetection.config.start_of_speech` / `end_of_speech`. The old `type: 'agora_vad'` flat structure is deprecated.
-
-10. **Shader visualizer track stability** — `getMediaStreamTrack()` on `IRemoteAudioTrack` / `IMicrophoneAudioTrack` may return a new object per call. Memoize on the upstream Agora track reference when passing tracks to `useAudioFFT`.
-
-11. **Transcript `turn_id` uniqueness** — `turn_id` is scoped per speaker. Use a composite React key (`${uid}-${turn_id}`) when rendering transcript entries, otherwise user + agent turns with the same index collide.
-
-12. **No `useState` + effect for derived data** — React 19's `react-hooks/set-state-in-effect` rule errors on patterns like `useEffect(() => setFoo(derived), [deps])`. Use `useMemo` instead. See `isAgentConnected` in `ConversationShell`.
+- **Operating rules / what not to do / gotchas:** [`AGENTS.md`](./AGENTS.md)
+- **Decisions behind this structure:** [`docs/decisions/`](./docs/decisions/)
+- **In-flight work:** [`docs/plans/active/`](./docs/plans/active/)
+- **Historical plan record:** [`docs/plans/completed/`](./docs/plans/completed/)
+- **Known tech debt:** [`docs/plans/tech-debt.md`](./docs/plans/tech-debt.md)
+- **Step-by-step build guide:** [`docs/guides/GUIDE.md`](./docs/guides/GUIDE.md)
+- **Transcript streaming deep-dive:** [`docs/guides/TEXT_STREAMING_GUIDE.md`](./docs/guides/TEXT_STREAMING_GUIDE.md)

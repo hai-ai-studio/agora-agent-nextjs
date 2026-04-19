@@ -57,13 +57,13 @@ export function Transcript({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-            className="flex flex-col gap-[5px]"
+            className="flex flex-col gap-1.5"
           >
-            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.04em] text-ink-4">
+            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-ink-4">
               {labelFor(e.speaker, agentName)}
             </div>
             <div
-              className={`text-[14.5px] leading-[1.5] [text-wrap:pretty] ${
+              className={`text-sm leading-normal [text-wrap:pretty] ${
                 e.speaker === 'user' ? 'italic text-ink-3' : 'text-ink'
               }`}
             >
@@ -77,19 +77,19 @@ export function Transcript({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-            className="flex flex-col gap-[5px]"
+            className="flex flex-col gap-1.5"
           >
-            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.04em] text-ink-4">
+            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-ink-4">
               {labelFor(activeSpeaker, agentName)}
               <motion.span
-                className="text-[9px] tracking-[0.05em] text-pill-listen"
+                className="text-[9px] tracking-wider text-pill-listen"
                 animate={{ opacity: [1, 0.35, 1] }}
                 transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
               >
                 ● live
               </motion.span>
             </div>
-            <div className="text-[14.5px] leading-[1.5] text-ink [text-wrap:pretty]">
+            <div className="text-sm leading-normal text-ink [text-wrap:pretty]">
               {activeText}
               <motion.span
                 className="ml-0.5 inline-block text-ink"
@@ -103,7 +103,7 @@ export function Transcript({
         )}
       </AnimatePresence>
       {isEmpty && (
-        <div className="mt-10 text-center font-serif text-[13px] italic text-ink-4">
+        <div className="mt-10 text-center font-serif text-xs italic text-ink-4">
           Transcript will appear here once you start talking.
         </div>
       )}

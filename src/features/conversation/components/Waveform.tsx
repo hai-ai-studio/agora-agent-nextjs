@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useAudioFFT } from '@/features/conversation/lib/audio';
+import { useAudioFFT } from '@/features/conversation/hooks/useAudioFFT';
 import type { AriaState } from './aria-state';
 
 // useState initializer runs once at mount and is the sanctioned place for Math.random —

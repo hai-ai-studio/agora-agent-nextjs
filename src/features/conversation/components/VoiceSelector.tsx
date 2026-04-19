@@ -87,18 +87,18 @@ export function VoiceSelector({ voice, onVoiceChange }: VoiceSelectorProps) {
           semantic label when the visible text is hidden. */}
       <button
         type="button"
-        className="flex h-9 w-[208px] shrink-0 cursor-pointer items-center gap-2 rounded-full border border-line bg-white/60 px-[14px] font-sans text-[13px] font-medium text-ink-2 transition-colors duration-150 hover:border-line-2 max-[480px]:w-9 max-[480px]:justify-center max-[480px]:gap-0 max-[480px]:px-0"
+        className="flex h-9 w-52 shrink-0 cursor-pointer items-center gap-2 rounded-full border border-line bg-white/60 px-3.5 font-sans text-xs font-medium text-ink-2 transition-colors duration-150 hover:border-line-2 max-[480px]:w-9 max-[480px]:justify-center max-[480px]:gap-0 max-[480px]:px-0"
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Voice: ${current.name}, language: ${lang}. Change voice or language.`}
       >
-        <span className="h-[7px] w-[7px] shrink-0 rounded-full bg-ink" />
+        <span className="size-2 shrink-0 rounded-full bg-ink" />
         <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap max-[480px]:hidden">
           {current.name}
         </span>
         <span className="mx-0.5 h-3.5 w-px shrink-0 bg-line-2 max-[480px]:hidden" />
-        <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-normal text-ink-3 max-[480px]:hidden">
+        <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs font-normal text-ink-3 max-[480px]:hidden">
           {lang}
         </span>
         <span className="max-[480px]:hidden">
@@ -130,7 +130,7 @@ interface VoiceMenuProps {
 
 // Shared option row styling — used by both voice and language sections.
 const OPT_BASE =
-  'flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-[10px] border-none bg-transparent px-2.5 py-2 text-left font-sans text-[13px] text-ink-2 transition-colors duration-[120ms] hover:bg-bg-2 disabled:cursor-default disabled:opacity-[0.45] disabled:hover:bg-transparent';
+  'flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-2 text-left font-sans text-xs text-ink-2 transition-colors duration-100 hover:bg-bg-2 disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent';
 
 function VoiceMenu({ voice, onVoiceChange, lang, onLangChange, onClose }: VoiceMenuProps) {
   return (
@@ -140,9 +140,9 @@ function VoiceMenu({ voice, onVoiceChange, lang, onLangChange, onClose }: VoiceM
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 4 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
-      className="absolute bottom-[calc(100%+12px)] left-0 z-[5] w-[260px] max-w-[calc(100vw-32px)] rounded-[18px] border border-line bg-white/95 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.12)] backdrop-blur-[24px] supports-[backdrop-filter]:bg-white/95 max-[640px]:left-auto max-[640px]:right-0"
+      className="absolute bottom-[calc(100%+12px)] left-0 z-10 w-64 max-w-[calc(100vw-2rem)] rounded-2xl border border-line bg-white/95 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.12)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/95 max-sm:left-auto max-sm:right-0"
     >
-      <div className="px-2.5 pb-1.5 pt-2 text-[10px] font-medium uppercase tracking-[0.08em] text-ink-4">
+      <div className="px-2.5 pb-1.5 pt-2 text-[10px] font-medium uppercase tracking-widest text-ink-4">
         Voice
       </div>
       {VOICES.map((v) => (
@@ -159,22 +159,22 @@ function VoiceMenu({ voice, onVoiceChange, lang, onLangChange, onClose }: VoiceM
           }}
         >
           <div>
-            <div className="text-[13.5px] font-medium">{v.name}</div>
-            <div className="mt-0.5 text-[11.5px] text-ink-4">{v.desc}</div>
+            <div className="text-sm font-medium">{v.name}</div>
+            <div className="mt-0.5 text-xs text-ink-4">{v.desc}</div>
           </div>
-          {v.id === voice && <span className="text-[12px] text-ink">✓</span>}
+          {v.id === voice && <span className="text-xs text-ink">✓</span>}
           {v.disabled && <SoonBadge />}
         </button>
       ))}
       <div className="mx-1 my-1.5 h-px bg-line" />
-      <div className="px-2.5 pb-1.5 pt-2 text-[10px] font-medium uppercase tracking-[0.08em] text-ink-4">
+      <div className="px-2.5 pb-1.5 pt-2 text-[10px] font-medium uppercase tracking-widest text-ink-4">
         Language
       </div>
       {LANGS.map((l) => (
         <button
           key={l.label}
           type="button"
-          className={`${OPT_BASE} text-[13px] ${l.label === lang ? 'text-ink' : ''}`}
+          className={`${OPT_BASE} ${l.label === lang ? 'text-ink' : ''}`}
           disabled={l.disabled}
           aria-disabled={l.disabled}
           onClick={() => {
@@ -183,7 +183,7 @@ function VoiceMenu({ voice, onVoiceChange, lang, onLangChange, onClose }: VoiceM
           }}
         >
           {l.label}
-          {l.label === lang && <span className="text-[12px] text-ink">✓</span>}
+          {l.label === lang && <span className="text-xs text-ink">✓</span>}
           {l.disabled && <SoonBadge />}
         </button>
       ))}
@@ -193,7 +193,7 @@ function VoiceMenu({ voice, onVoiceChange, lang, onLangChange, onClose }: VoiceM
 
 function SoonBadge() {
   return (
-    <span className="rounded border border-line-2 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em] text-ink-4">
+    <span className="rounded border border-line-2 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink-4">
       Soon
     </span>
   );

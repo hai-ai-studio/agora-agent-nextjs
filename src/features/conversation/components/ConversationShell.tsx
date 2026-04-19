@@ -42,12 +42,13 @@ export default function ConversationShell({
   // Voice + language selectors are UI-only in V1 — shown in the dock but not yet wired to /api/invite-agent.
   const [voice, setVoice] = useState('ada');
   // Transcript panel: visible by default on desktop so first-time users see the live turns, but
-  // hidden by default on phones (≤720px) — at that viewport it becomes a full bottom sheet and
-  // opening it by default would eat the whole screen before the user has seen the persona.
-  // Safe to read `window` in the initializer: this component is dynamic-imported with ssr:false.
+  // hidden by default on phones (matching Tailwind `md` = 768px) — at that viewport it becomes
+  // a full bottom sheet and opening it by default would eat the whole screen before the user
+  // has seen the persona. Safe to read `window` in the initializer: this component is
+  // dynamic-imported with ssr:false.
   const [isTranscriptVisible, setIsTranscriptVisible] = useState(() => {
     if (typeof window === 'undefined') return true;
-    return !window.matchMedia('(max-width: 720px)').matches;
+    return !window.matchMedia('(max-width: 767px)').matches;
   });
 
   // Tracks granular RTC connection state for the status dot.
@@ -203,30 +204,30 @@ export default function ConversationShell({
     onEndConversation();
   }, [onEndConversation]);
 
-  // Keep the grid at 2 tracks always on desktop so the 2nd track can animate 340px ↔ 0px
-  // smoothly. Below 720px the aside is removed from the grid entirely (rendered as a fixed
+  // Keep the grid at 2 tracks always on desktop so the 2nd track can animate 20rem ↔ 0
+  // smoothly. Below `md` the aside is removed from the grid entirely (rendered as a fixed
   // bottom sheet instead), so the stage always gets the full viewport width.
   const stageGridClass = isTranscriptVisible
-    ? 'grid-cols-[1fr_340px] gap-6 max-[960px]:gap-4 max-[720px]:grid-cols-[1fr] max-[720px]:grid-rows-[1fr] max-[720px]:gap-0'
-    : 'grid-cols-[1fr_0px] gap-0 max-[720px]:grid-cols-[1fr] max-[720px]:grid-rows-[1fr]';
+    ? 'grid-cols-[1fr_20rem] gap-6 max-lg:gap-4 max-md:grid-cols-[1fr] max-md:grid-rows-[1fr] max-md:gap-0'
+    : 'grid-cols-[1fr_0px] gap-0 max-md:grid-cols-[1fr] max-md:grid-rows-[1fr]';
   const connectedLabel = connectionState === 'CONNECTED' ? 'Connected' : 'Connecting';
 
   // Transcript card body — shared between the desktop side panel and the mobile bottom sheet
   // so the Transcript component, header, and close affordance stay in one place.
   const transcriptCardBody = (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="mb-3 flex items-center justify-between border-b border-line px-1 pb-[14px]">
+      <div className="mb-3 flex items-center justify-between border-b border-line px-1 pb-3.5">
         <div className="font-serif text-xl italic tracking-[-0.01em]">
           Transcript
         </div>
         <div className="flex items-center gap-2.5">
-          <div className="font-mono text-[12px] text-ink-3">
+          <div className="font-mono text-xs text-ink-3">
             Live · {transcriptEntries.length} turn
             {transcriptEntries.length === 1 ? '' : 's'}
           </div>
           <button
             type="button"
-            className="flex h-[26px] w-[26px] cursor-pointer items-center justify-center rounded-full border-none bg-transparent text-ink-3 transition-colors duration-150 hover:bg-black/[0.06] hover:text-ink"
+            className="flex size-6 cursor-pointer items-center justify-center rounded-full border-none bg-transparent text-ink-3 transition-colors duration-150 hover:bg-black/5 hover:text-ink"
             onClick={() => setIsTranscriptVisible(false)}
             aria-label="Hide transcript"
             title="Hide transcript"
@@ -266,9 +267,9 @@ export default function ConversationShell({
     >
       <Ambient state={ariaState} />
 
-      <header className="relative z-[2] flex shrink-0 items-center justify-between px-6 py-[14px] max-[960px]:px-4 max-[960px]:py-3">
+      <header className="relative z-20 flex shrink-0 items-center justify-between px-6 py-3.5 max-lg:px-4 max-lg:py-3">
         <div className="flex items-center gap-2.5 text-ink">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ink text-white">
+          <div className="flex size-8 items-center justify-center rounded-full bg-ink text-white">
             <svg
               viewBox="0 0 24 24"
               width="18"
@@ -284,35 +285,35 @@ export default function ConversationShell({
               <circle cx="12" cy="12" r="11" opacity="0.2" />
             </svg>
           </div>
-          <span className="font-serif text-[22px] italic tracking-[-0.01em] max-[360px]:text-[18px]">
+          <span className="font-serif text-2xl italic tracking-[-0.01em] max-[360px]:text-lg">
             {ADA_AGENT_NAME}
             <span className="text-ink-4"> · </span>
             <span className="text-ink-3">Agora</span>
           </span>
         </div>
 
-        <div className="flex gap-5 font-mono text-[13px] tracking-[-0.01em] text-ink-3">
+        <div className="flex gap-5 font-mono text-xs tracking-[-0.01em] text-ink-3">
           <span className="inline-flex items-center gap-2">
             <motion.span
-              className="h-[7px] w-[7px] rounded-full bg-[#16a34a] shadow-[0_0_0_3px_rgba(22,163,74,0.15)]"
+              className="size-2 rounded-full bg-[#16a34a] shadow-[0_0_0_3px_rgba(22,163,74,0.15)]"
               animate={{ opacity: [1, 0.5, 1] }}
               transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
             />
             {connectedLabel}
           </span>
-          <span className="inline-flex items-center gap-2 text-ink-4 max-[720px]:hidden">
+          <span className="inline-flex items-center gap-2 text-ink-4 max-md:hidden">
             End-to-end encrypted
           </span>
         </div>
       </header>
 
       <main
-        className={`relative z-[1] grid min-h-0 items-stretch px-6 transition-[grid-template-columns,grid-template-rows,gap] duration-[280ms] ease-aria-out max-[960px]:px-4 ${stageGridClass}`}
+        className={`relative z-10 grid min-h-0 items-stretch px-6 transition-[grid-template-columns,grid-template-rows,gap] duration-300 ease-aria-out max-lg:px-4 ${stageGridClass}`}
       >
         <section className="flex min-h-0 flex-col items-center justify-center gap-[clamp(16px,3vh,32px)] overflow-auto px-0 py-2 pb-4">
           <Persona state={ariaState} hint={ARIA_HINT[ariaState]} />
 
-          <div className="w-full max-w-[720px] overflow-hidden rounded-3xl border border-line bg-white/40 px-6 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.02),_0_20px_50px_rgba(0,0,0,0.05)] backdrop-blur-[20px] supports-[backdrop-filter]:bg-white/40 max-[960px]:px-5 max-[960px]:py-3 max-[640px]:rounded-[18px] max-[640px]:px-[18px] max-[640px]:py-2.5 min-[1440px]:max-w-[860px]">
+          <div className="w-full max-w-3xl overflow-hidden rounded-3xl border border-line bg-white/40 px-6 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.02),_0_20px_50px_rgba(0,0,0,0.05)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/40 max-lg:px-5 max-lg:py-3 max-sm:rounded-2xl max-sm:px-4 max-sm:py-2.5 2xl:max-w-4xl">
             <div className="flex items-center gap-4">
               <div className="w-11 shrink-0 font-serif text-base italic text-ink-3">
                 {ADA_AGENT_NAME}
@@ -324,7 +325,7 @@ export default function ConversationShell({
                 audioTrack={agentMediaTrack}
               />
             </div>
-            <div className="my-2 h-px bg-line max-[640px]:my-1" />
+            <div className="my-2 h-px bg-line max-sm:my-1" />
             <div className="flex items-center gap-4">
               <div className="w-11 shrink-0 font-serif text-base italic text-ink-3">
                 You
@@ -346,22 +347,22 @@ export default function ConversationShell({
           ))}
         </section>
 
-        {/* Desktop side panel (>720px). Hidden entirely on phones — the mobile bottom sheet
-            below takes over there. On desktop the track width animates between 340px and 0px;
+        {/* Desktop side panel (≥md). Hidden entirely on phones — the mobile bottom sheet
+            below takes over there. On desktop the track width animates between 20rem and 0;
             the card fades in sync so the transition reads as one motion. */}
         <aside
           aria-hidden={!isTranscriptVisible}
-          className={`flex min-h-0 flex-col overflow-hidden transition-opacity duration-[280ms] ease-aria-out max-[720px]:hidden ${
+          className={`flex min-h-0 flex-col overflow-hidden transition-opacity duration-300 ease-aria-out max-md:hidden ${
             isTranscriptVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
           }`}
         >
-          <div className="my-1 mb-3 flex h-full min-h-0 w-[340px] flex-col rounded-[20px] border border-line bg-white/55 p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02),_0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-[20px] supports-[backdrop-filter]:bg-white/55">
+          <div className="my-1 mb-3 flex h-full min-h-0 w-80 flex-col rounded-2xl border border-line bg-white/55 p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02),_0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/55">
             {transcriptCardBody}
           </div>
         </aside>
       </main>
 
-      {/* Mobile bottom sheet (≤720px). A fixed-position overlay with a tappable backdrop and
+      {/* Mobile bottom sheet (<md). A fixed-position overlay with a tappable backdrop and
           a sheet that slides up from the bottom. Rendered only on phones so desktop behavior
           is untouched. The same card body as the desktop aside keeps the header + Transcript
           component consistent across form factors. */}
@@ -369,7 +370,7 @@ export default function ConversationShell({
         {isTranscriptVisible && (
           <motion.div
             key="mobile-transcript-sheet"
-            className="fixed inset-0 z-30 flex items-end bg-black/40 min-[721px]:hidden"
+            className="fixed inset-0 z-30 flex items-end bg-black/40 md:hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -383,7 +384,7 @@ export default function ConversationShell({
             aria-label="Conversation transcript"
           >
             <motion.div
-              className="flex h-[75vh] max-h-[560px] w-full flex-col rounded-t-[24px] border border-line bg-white/95 p-4 pb-6 shadow-[0_-12px_60px_rgba(0,0,0,0.18)] backdrop-blur-[24px] supports-[backdrop-filter]:bg-white/95"
+              className="flex h-[75vh] max-h-[35rem] w-full flex-col rounded-t-3xl border border-line bg-white/95 p-4 pb-6 shadow-[0_-12px_60px_rgba(0,0,0,0.18)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/95"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
@@ -399,9 +400,9 @@ export default function ConversationShell({
       </AnimatePresence>
 
       <footer
-        className={`relative z-[2] flex shrink-0 justify-center pb-4 pt-3 transition-[padding] duration-[280ms] ease-aria-out max-[960px]:pb-[14px] max-[960px]:pt-2 ${
+        className={`relative z-20 flex shrink-0 justify-center pb-4 pt-3 transition-[padding] duration-300 ease-aria-out max-lg:pb-3.5 max-lg:pt-2 ${
           isTranscriptVisible
-            ? 'pl-6 pr-[388px] max-[720px]:pr-6'
+            ? 'pl-6 pr-96 max-md:pr-6'
             : 'px-6'
         }`}
       >

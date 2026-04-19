@@ -9,7 +9,7 @@ import {
   type GLContext,
 } from './gl';
 import { fragSrc, vertSrc } from './shader';
-import { useAudioFFT, type AudioBands } from '@/features/conversation/lib/audio';
+import { useAudioFFT, type AudioBands } from '@/features/conversation/hooks/useAudioFFT';
 
 export type AgentShaderVisualizerState =
   | 'not-joined'

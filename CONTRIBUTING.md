@@ -135,8 +135,9 @@ Before starting work on a major feature:
 
 When changing implementation:
 - Update relevant sections in `README.md`
-- Update `docs/GUIDE.md` if the change affects the tutorial
-- Update `agents.md` if the architecture changes
+- Update `docs/guides/GUIDE.md` if the change affects the tutorial
+- Update `ARCHITECTURE.md` if the directory layout or data flow changes
+- Update `AGENTS.md` if the agent-facing rules / gotchas / styling conventions change
 - Keep code comments in sync with the code
 
 ## Testing
@@ -150,7 +151,7 @@ Currently, this project does not have automated tests. When adding tests:
 
 - Open an issue for questions about contributing
 - Check existing issues and PRs for similar discussions
-- Review `agents.md` for the project architecture overview
+- Review `AGENTS.md` for the project architecture overview
 
 ## Code of Conduct
 
