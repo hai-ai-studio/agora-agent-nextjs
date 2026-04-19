@@ -15,7 +15,7 @@ pnpm add agora-agent-client-toolkit agora-agent-uikit agora-rtm
 ```
 
 - **`agora-agent-client-toolkit`** provides the `AgoraVoiceAI` class for receiving transcription data over RTM, managing message state, and emitting updates via events.
-- **`agora-agent-uikit`** provides `ConvoTextStream` for transcript UI and `AgentVisualizer` for agent state UI.
+- **`agora-agent-uikit`** exposes the `IMessageListItem` + `AgentVisualizerState` type shapes consumed by `lib/conversation.ts` helpers. The quickstart's main UI does not render uikit runtime components — the Aria view layer in `components/aria/` (`Transcript`, `Waveform`, `Persona`, `Controls`) is used instead. If you prefer the turnkey uikit experience, `ConvoTextStream` and `AgentVisualizer` remain installed and can be dropped in.
 - **`agora-rtm`** is the Agora Real-Time Messaging SDK — the transport layer that carries transcript data from the agent to the client.
 
 Why bother adding text when the primary interaction is voice? Good question! Here's why it's a game-changer:
@@ -33,7 +33,7 @@ Ready to add this superpower to your app? Let's dive in.
 Adding text streaming involves three main players in your codebase:
 
 1. **The Brains (`agora-agent-client-toolkit`)**: The `AgoraVoiceAI` class. It uses RTM to receive transcription data, manages message states (e.g., "is the AI still talking?"), and emits updates via events.
-2. **The Face (`ConvoTextStream` and `AgentVisualizer` from `agora-agent-uikit`)**: Pre-built UI components for transcript history and agent state.
+2. **The Face (`components/aria/Transcript.tsx` + `components/aria/Waveform.tsx`)**: The Aria view layer consumes the derived `messageList` / `currentInProgressMessage` and renders the side-panel transcript + two-row bar waveform. The uikit's `ConvoTextStream` + `AgentVisualizer` remain available as drop-in alternatives.
 3. **The Conductor (`ConversationComponent.tsx`)**: Handles the Agora RTC/RTM connection, initializes `AgoraVoiceAI`, subscribes to transcript and state events, remaps UIDs, adapts the transcript shape, and passes data down to the UI kit.
 
 Here's how they communicate:
@@ -268,12 +268,18 @@ The local adapter is intentional. The current repo hit a browser runtime issue w
 
 ## Rendering with `ConvoTextStream`
 
-Drop `ConvoTextStream` into your JSX. It handles smart scrolling, auto-open on first message, mobile responsiveness, and streaming indicators. This quickstart also renders `AgentVisualizer` from RTM agent state:
+Drop `ConvoTextStream` into your JSX. It handles smart scrolling, auto-open on first message, mobile responsiveness, and streaming indicators. Alongside it, this quickstart renders `AgentShaderVisualizer` (the default) or the uikit `AgentVisualizer` (if `NEXT_PUBLIC_SHADER_VIZ=0`):
 
 ```typescript
-import { AgentVisualizer, ConvoTextStream } from 'agora-agent-uikit';
+import { ConvoTextStream } from 'agora-agent-uikit';
+import { AgentShaderVisualizer } from '@/components/AgentShaderVisualizer';
 
-<AgentVisualizer state={visualizerState} size="lg" />
+<AgentShaderVisualizer
+  state={visualizerState}
+  size="lg"
+  agentAudioTrack={agentMediaTrack}
+  userAudioTrack={userMediaTrack}
+/>
 <ConvoTextStream
   messageList={messageList}
   currentInProgressMessage={currentInProgressMessage}

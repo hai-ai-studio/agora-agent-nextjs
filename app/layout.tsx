@@ -1,5 +1,27 @@
 import type { Metadata, Viewport } from 'next';
+import { Inter_Tight, Instrument_Serif, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
+
+// Aria typography: sans body, italic serif display, mono meta. Weights mirror the reference HTML.
+const interTight = Inter_Tight({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  variable: '--font-sans',
+  display: 'swap',
+});
+const instrumentSerif = Instrument_Serif({
+  subsets: ['latin'],
+  weight: ['400'],
+  style: ['normal', 'italic'],
+  variable: '--font-serif',
+  display: 'swap',
+});
+const jetBrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-mono',
+  display: 'swap',
+});
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -39,7 +61,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      className={`${interTight.variable} ${instrumentSerif.variable} ${jetBrainsMono.variable}`}
+    >
       <body suppressHydrationWarning={true}>{children}</body>
     </html>
   );

@@ -10,6 +10,8 @@ In this guide, we'll build a real-time audio conversation application that conne
 
 By the end of this guide, you will have a real-time audio conversation application that connects users with an AI agent powered by Agora's Conversational AI Engine.
 
+> **Note on the UI layer.** The companion quickstart repo ships a bespoke editorial view layer — the "Aria" skin — built directly on top of the Agora hooks (`Persona` card, two-row bar `Waveform`, side-panel `Transcript`, pill `Controls` dock under `components/aria/`). The Agora **wiring** shown throughout this guide (hooks, `AgoraVoiceAI` init, StrictMode guards, token refresh, transcript state) is identical regardless of how you skin the UI. Code snippets below continue to reference the uikit components (`AgentVisualizer`, `ConvoTextStream`, `MicButtonWithVisualizer`) for simplicity; treat those as drop-in renderers you can swap for your own visual layer once the wiring is in place.
+
 ## Prerequisites
 
 Before starting, for the guide you're going to need to have:
@@ -1061,8 +1063,9 @@ export async function POST(request: Request) {
 
 Rather than building custom microphone buttons and audio visualizers from scratch, Agora provides two packages that handle the UI and transcript logic for you:
 
-- **`agora-agent-uikit`** — pre-built components: `AgentVisualizer`, `MicButtonWithVisualizer`, `ConvoTextStream`
+- **`agora-agent-uikit`** — pre-built components: `MicButtonWithVisualizer`, `ConvoTextStream`, and (as a fallback) `AgentVisualizer`
 - **`agora-agent-client-toolkit`** — `AgoraVoiceAI` class that subscribes to RTM transcript events and emits transcript, state, and error events
+- **`components/AgentShaderVisualizer/`** — the default agent-state UI in this quickstart. A tiny WebGL fragment shader that taps each speaker's `MediaStreamTrack` for real-time FFT and deforms with the audio. The uikit's `AgentVisualizer` is kept as an opt-out fallback (`NEXT_PUBLIC_SHADER_VIZ=0`).
 
 Both packages are already installed. Now we'll wire them into the `ConversationComponent`.
 
@@ -1093,7 +1096,7 @@ Here is the full updated `ConversationComponent` using the toolkit and uikit:
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { X } from 'lucide-react';
+import { PhoneOff } from 'lucide-react';
 import { setParameter } from 'agora-rtc-sdk-ng/esm';
 import {
   useRTCClient,
@@ -1123,10 +1126,15 @@ import {
   type IMessageListItem,
 } from 'agora-agent-uikit';
 import { MicButtonWithVisualizer } from 'agora-agent-uikit/rtc';
+import { AgentShaderVisualizer } from '@/components/AgentShaderVisualizer';
 import { Button } from '@/components/ui/button';
 import { DEFAULT_AGENT_UID } from '@/lib/agora';
 import { MicrophoneSelector } from './MicrophoneSelector';
 import { ConnectionStatusPanel } from './ConnectionStatusPanel';
+
+// Shader visualizer is the default. Set NEXT_PUBLIC_SHADER_VIZ=0 to fall back to the
+// uikit's Lottie-based AgentVisualizer (e.g. for browsers without WebGL).
+const USE_SHADER_VIZ = process.env.NEXT_PUBLIC_SHADER_VIZ !== '0';
 import {
   getConversationIssueSeverity,
   type ConnectionIssue,
@@ -1403,6 +1411,18 @@ export default function ConversationComponent({
     [agentState, isAgentConnected, connectionState]
   );
 
+  // Raw MediaStreamTracks for the shader visualizer's FFT tap. Memoized by the upstream
+  // Agora track reference so useAudioFFT doesn't rebuild the analyser every render.
+  const agentRemoteUser = remoteUsers.find((user) => user.uid.toString() === agentUID);
+  const agentMediaTrack = useMemo(
+    () => agentRemoteUser?.audioTrack?.getMediaStreamTrack() ?? null,
+    [agentRemoteUser?.audioTrack]
+  );
+  const userMediaTrack = useMemo(
+    () => localMicrophoneTrack?.getMediaStreamTrack() ?? null,
+    [localMicrophoneTrack]
+  );
+
   return (
     <div className="flex flex-col gap-6 p-4 h-full">
       <div className="absolute top-4 left-4">
@@ -1417,19 +1437,31 @@ export default function ConversationComponent({
 
       <div className="absolute top-4 right-4">
         <Button
-          variant="destructive"
+          variant="ghost"
           size="icon"
+          className="rounded-full border border-border bg-card/60 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
           onClick={onEndConversation}
           aria-label="End conversation with AI agent"
           title="End conversation"
         >
-          <X />
+          <PhoneOff />
         </Button>
       </div>
 
-      {/* Remote users keep RTC audio subscribed. The visualizer itself is driven by RTM state. */}
+      {/* Remote users keep RTC audio subscribed. The visualizer itself is driven by
+          RTM state; the shader visualizer additionally taps each speaker's audio track
+          for real-time FFT. Flag-off path falls back to the uikit Lottie visualizer. */}
       <div className="relative h-56 w-full flex items-center justify-center">
-        <AgentVisualizer state={visualizerState} size="lg" />
+        {USE_SHADER_VIZ ? (
+          <AgentShaderVisualizer
+            state={visualizerState}
+            size="lg"
+            agentAudioTrack={agentMediaTrack}
+            userAudioTrack={userMediaTrack}
+          />
+        ) : (
+          <AgentVisualizer state={visualizerState} size="lg" />
+        )}
         {remoteUsers.map((user) => (
           <div key={user.uid} className="hidden">
             <RemoteUser user={user} />
@@ -1459,14 +1491,27 @@ export default function ConversationComponent({
 }
 ```
 
-### Key uikit Components
+### Key Visualizer + UI Components
 
-| Component                 | Import                  | Description                                                                                          |
-| ------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| `AgentVisualizer`         | `agora-agent-uikit`     | Agent-state-driven visualizer for not-joined, listening, analyzing, talking, and disconnected states |
-| `ConvoTextStream`         | `agora-agent-uikit`     | Floating chat panel showing live and completed transcript turns                                      |
-| `MicButtonWithVisualizer` | `agora-agent-uikit/rtc` | Mic button with built-in Web Audio visualization                                                     |
-| `ConnectionStatusPanel`   | local component         | Compact status dot plus expandable RTM/agent issue panel                                             |
+| Component                 | Import                                    | Description                                                                                                                   |
+| ------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `AgentShaderVisualizer`   | `@/components/AgentShaderVisualizer`      | **Default.** Audio-reactive WebGL visualizer driven by `visualizerState` + FFT bands of the active speaker's `MediaStreamTrack`. |
+| `AgentVisualizer`         | `agora-agent-uikit`                       | Lottie fallback used when `NEXT_PUBLIC_SHADER_VIZ=0`.                                                                         |
+| `ConvoTextStream`         | `agora-agent-uikit`                       | Floating chat panel showing live and completed transcript turns                                                               |
+| `MicButtonWithVisualizer` | `agora-agent-uikit/rtc`                   | Mic button with built-in Web Audio visualization                                                                              |
+| `ConnectionStatusPanel`   | local component                           | Compact status dot plus expandable RTM/agent issue panel                                                                      |
+
+### Why a Shader Visualizer
+
+The uikit's `AgentVisualizer` plays one of seven pre-designed Lottie animations keyed to the agent's discrete state. It looks great but is open-loop — it looks identical whether the agent is whispering or shouting. The shader visualizer is closed-loop: it taps the active speaker's `MediaStreamTrack`, runs FFT, and uses bass / mid / treble bands as shader uniforms so the blob literally breathes with speech.
+
+Key wiring (already shown above):
+
+1. `agentRemoteUser?.audioTrack?.getMediaStreamTrack()` → drives `talking` state.
+2. `localMicrophoneTrack?.getMediaStreamTrack()` → drives `listening` state.
+3. Both derivations are wrapped in `useMemo` keyed on the upstream Agora track reference — without that, `getMediaStreamTrack()` may return a fresh object each render and force `useAudioFFT` to tear down and rebuild its `AnalyserNode`.
+4. Palette colors come from the existing `--viz-stop-1/2/3` CSS tokens in `app/globals.css` — update those tokens to restyle both the Lottie and shader visualizers.
+5. `prefers-reduced-motion` freezes the render loop after one frame per state change.
 
 ### Key toolkit Classes
 

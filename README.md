@@ -24,7 +24,7 @@ Required environment variables:
 - `NEXT_PUBLIC_AGORA_APP_ID`
 - `NEXT_AGORA_APP_CERTIFICATE`
 
-Optional convenience override:
+Optional convenience overrides:
 
 - `NEXT_PUBLIC_AGENT_UID` defaults to `123456`
 
@@ -44,7 +44,7 @@ The browser uses the Next.js app for token generation and agent lifecycle calls,
 - browser voice client built with Next.js App Router
 - RTC audio plus RTM transcript and state events
 - server routes for token generation, invite, and stop
-- `AgentVisualizer` for agent state and `ConvoTextStream` for live transcript UI
+- Editorial "Aria" UI — concentric-ring persona, two-row bar waveform (agent / you), glass side transcript, pill-shaped controls dock — built directly on top of the Agora hooks
 - Agora-managed default STT, LLM, and TTS configuration
 
 ## How It Works
@@ -74,8 +74,11 @@ Examples:
 - `app/api/generate-agora-token/route.ts` issues RTC + RTM tokens
 - `app/api/invite-agent/route.ts` starts the agent session
 - `app/api/stop-conversation/route.ts` stops the agent session
-- `components/LandingPage.tsx` starts the session and manages RTM login
-- `components/ConversationComponent.tsx` manages RTC, transcript state, `AgentVisualizer`, and `ConvoTextStream`
+- `components/LandingPage.tsx` editorial pre-call screen and session orchestration (RTM login, agent invite)
+- `components/ConversationComponent.tsx` Agora hooks + StrictMode guards + `AgoraVoiceAI` wiring; renders the Aria layout
+- `components/aria/` Aria-style view layer — `Ambient`, `Persona`, `Waveform`, `Transcript`, `Controls`, `VoiceSelector`
+- `components/AgentShaderVisualizer/` WebGL-shader visualizer used by the `/lab/visualizer` playground (not in the main flow)
+- `app/lab/visualizer/` standalone page for tuning the shader visualizer
 
 ## More Docs
 

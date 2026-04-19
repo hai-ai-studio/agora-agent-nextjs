@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { X } from 'lucide-react';
 import { setParameter } from 'agora-rtc-sdk-ng/esm';
 import {
   useRTCClient,
@@ -23,9 +22,6 @@ import {
   type UserTranscription,
   type AgentTranscription,
 } from 'agora-agent-client-toolkit';
-import { AgentVisualizer, ConvoTextStream } from 'agora-agent-uikit';
-import { MicButtonWithVisualizer } from 'agora-agent-uikit/rtc';
-import { Button } from '@/components/ui/button';
 import { DEFAULT_AGENT_UID } from '@/lib/agora';
 import {
   getCurrentInProgressMessage,
@@ -34,16 +30,30 @@ import {
   normalizeTimestampMs,
   normalizeTranscript,
 } from '@/lib/conversation';
-import { MicrophoneSelector } from './MicrophoneSelector';
-import {
-  getConversationIssueSeverity,
-  type ConnectionIssue,
-} from './ConversationErrorCard';
-// import { ConnectionStatusPanel } from './ConnectionStatusPanel';
 import type { ConversationComponentProps } from '@/types/conversation';
+
+// Shape of an issue captured from the AgoraVoiceAI + raw RTM error streams. The renderable
+// panel was retired in the Aria redesign, but the recording path is kept so future surfaces
+// (dev overlay, Sentry integration, etc.) can consume the log.
+type ConnectionIssue = {
+  id: string;
+  source: 'rtm' | 'agent' | 'rtm-signaling';
+  agentUserId: string;
+  code: string | number;
+  message: string;
+  timestamp: number;
+};
+import { Ambient } from './aria/Ambient';
+import { Persona } from './aria/Persona';
+import { Waveform } from './aria/Waveform';
+import { Transcript, type TranscriptEntry } from './aria/Transcript';
+import { Controls } from './aria/Controls';
+import { ARIA_AGENT_NAME, ARIA_HINT, mapToAriaState, type AriaState } from './aria/types';
 
 // Cap the displayed issues list to avoid overwhelming the UI during a cascade of errors.
 const MAX_CONNECTION_ISSUES = 6;
+
+const ARIA_STATE_SEQUENCE: AriaState[] = ['idle', 'listening', 'thinking', 'speaking'];
 
 // Payload shape for signaling-level errors forwarded by the agent over RTM.
 // The `module` field identifies which backend subsystem (LLM / ASR / TTS) raised the error.
@@ -88,12 +98,17 @@ export default function ConversationComponent({
   rtmClient,
   onTokenWillExpire,
   onEndConversation,
+  onStopAgent,
 }: ConversationComponentProps) {
   const client = useRTCClient();
   const remoteUsers = useRemoteUsers();
   const [isEnabled, setIsEnabled] = useState(true);
   const [isAgentConnected, setIsAgentConnected] = useState(false);
-  const [isConnectionDetailsOpen, setIsConnectionDetailsOpen] = useState(false);
+  const [isEnded, setIsEnded] = useState(false);
+  // Dev-only: override the derived Aria state to walk through visuals without a real call.
+  const [ariaStateOverride, setAriaStateOverride] = useState<AriaState | null>(null);
+  // Voice + language selectors are UI-only in V1 — shown in the dock but not yet wired to /api/invite-agent.
+  const [voice, setVoice] = useState('aria');
 
   // Tracks granular RTC connection state for the status dot.
   // Agora states: DISCONNECTED | CONNECTING | CONNECTED | DISCONNECTING | RECONNECTING
@@ -107,9 +122,9 @@ export default function ConversationComponent({
     TranscriptHelperItem<Partial<UserTranscription | AgentTranscription>>[]
   >([]);
   const [agentState, setAgentState] = useState<AgentState | null>(null);
-  const [connectionIssues, setConnectionIssues] = useState<ConnectionIssue[]>(
-    [],
-  );
+  // Issue list is write-only for now (see Aria redesign plan). The state setter stays so the
+  // RTM + agent error subscriptions keep their recording path intact; the rendered panel is retired.
+  const [, setConnectionIssues] = useState<ConnectionIssue[]>([]);
   const addConnectionIssue = useCallback((issue: ConnectionIssue) => {
     setConnectionIssues((prev) => {
       const isDuplicate = prev.some(
@@ -124,12 +139,8 @@ export default function ConversationComponent({
     });
   }, []);
 
-  // Auto-open details panel as soon as a new issue is recorded.
-  useEffect(() => {
-    if (connectionIssues.length > 0) {
-      setIsConnectionDetailsOpen(true);
-    }
-  }, [connectionIssues.length]);
+  // connectionIssues is still populated (see RTM-error effect below) so future surface
+  // areas can consume it, but the in-UI details panel is retired under the Aria design.
 
   // StrictMode guard: delay `useJoin`'s ready flag until after the fake-unmount
   // cycle completes. React StrictMode fires cleanup synchronously before any
@@ -385,35 +396,57 @@ export default function ConversationComponent({
     setConnectionState(curState);
   });
 
-  const connectionSeverity = useMemo<'normal' | 'warning' | 'error'>(() => {
-    // RTC transport problems take precedence; otherwise derive severity from captured issues.
-    if (
-      connectionState === 'DISCONNECTED' ||
-      connectionState === 'DISCONNECTING'
-    ) {
-      return 'error';
-    }
-    if (
-      connectionState === 'CONNECTING' ||
-      connectionState === 'RECONNECTING'
-    ) {
-      return 'warning';
-    }
-    if (connectionIssues.length === 0) {
-      return 'normal';
-    }
-    return connectionIssues.some(
-      (issue) => getConversationIssueSeverity(issue) === 'error',
-    )
-      ? 'error'
-      : 'warning';
-  }, [connectionState, connectionIssues]);
-
   const visualizerState = useMemo(
     () =>
       mapAgentVisualizerState(agentState, isAgentConnected, connectionState),
     [agentState, isAgentConnected, connectionState],
   );
+
+  // Collapse RTC transport + agent state + local flags into Aria's seven-state enum.
+  // The dev cycle button wins when set; otherwise we read from the real pipeline.
+  const ariaState: AriaState = useMemo(() => {
+    if (ariaStateOverride) return ariaStateOverride;
+    return mapToAriaState(visualizerState, !isEnabled, isEnded);
+  }, [ariaStateOverride, visualizerState, isEnabled, isEnded]);
+
+  // Raw MediaStreamTracks for the Aria waveform's real-time FFT tap. Memoized on the
+  // upstream Agora track reference so useAudioFFT doesn't rebuild its AnalyserNode
+  // on every render (getMediaStreamTrack() can return a fresh object each call).
+  const agentRemoteUser = remoteUsers.find(
+    (user) => user.uid.toString() === agentUID,
+  );
+  const agentMediaTrack = useMemo(
+    () => agentRemoteUser?.audioTrack?.getMediaStreamTrack() ?? null,
+    [agentRemoteUser?.audioTrack],
+  );
+  const userMediaTrack = useMemo(
+    () => localMicrophoneTrack?.getMediaStreamTrack() ?? null,
+    [localMicrophoneTrack],
+  );
+
+  // Transcript data shape conversion: IMessageListItem (uid-based) → Aria's speaker-label shape.
+  // turn_id is scoped per speaker — both user and agent use turn_id 3 for the same exchange,
+  // so the key must combine uid + turn_id to stay unique within the list.
+  const transcriptEntries: TranscriptEntry[] = useMemo(() => {
+    return messageList.map((item) => ({
+      key: `${item.uid}-${item.turn_id}`,
+      speaker: item.uid.toString() === agentUID ? 'agent' : 'user',
+      text: item.text,
+    }));
+  }, [messageList, agentUID]);
+
+  const activeTranscript = useMemo(() => {
+    if (!currentInProgressMessage) {
+      return { text: '', speaker: 'agent' as const };
+    }
+    return {
+      text: currentInProgressMessage.text,
+      speaker:
+        currentInProgressMessage.uid.toString() === agentUID
+          ? ('agent' as const)
+          : ('user' as const),
+    };
+  }, [currentInProgressMessage, agentUID]);
 
   /**
    * Mute/unmute via track.setEnabled() only — usePublish owns publish state.
@@ -451,75 +484,142 @@ export default function ConversationComponent({
 
   useClientEvent(client, 'token-privilege-will-expire', handleTokenWillExpire);
 
+  // End-call flow. Two paths:
+  //   • If the parent provided `onStopAgent`, we enter the dwell-in `ended` state:
+  //     the agent is stopped server-side but the conversation UI stays mounted so
+  //     the user sees "Call ended" + "Start new call" (→ handleRestart → full teardown).
+  //   • If `onStopAgent` is absent, fall back to a single-shot end that unmounts immediately.
+  const handleEnd = useCallback(() => {
+    setAriaStateOverride(null);
+    setIsEnded(true);
+    if (onStopAgent) {
+      void onStopAgent();
+    } else {
+      onEndConversation();
+    }
+  }, [onStopAgent, onEndConversation]);
+
+  // Dev-only: walk through the four active states without a real call to inspect visuals.
+  const handleCycleState = useCallback(() => {
+    setAriaStateOverride((prev) => {
+      const current = prev ?? 'idle';
+      const idx = ARIA_STATE_SEQUENCE.indexOf(current);
+      return ARIA_STATE_SEQUENCE[(idx + 1) % ARIA_STATE_SEQUENCE.length];
+    });
+  }, []);
+
+  const handleRestart = useCallback(() => {
+    // "Start new call" from the ended dock → full teardown → parent returns to landing.
+    // Unmount/remount handles every piece of local state, so we don't need to reset here.
+    onEndConversation();
+  }, [onEndConversation]);
+
+  const shellClass = `aria-shell aria-shell-${ariaState}`;
+  const connectedLabel = connectionState === 'CONNECTED' ? 'Connected' : 'Connecting';
+
   return (
-    <div className="flex flex-col gap-6 p-4 h-full">
-      {/* Top-left status affordance: opens transport and agent error details without covering the main controls. */}
-      {/* <div className="absolute top-4 left-4">
-        <ConnectionStatusPanel
-          connectionState={connectionState}
-          connectionSeverity={connectionSeverity}
-          connectionIssues={connectionIssues}
-          isOpen={isConnectionDetailsOpen}
-          onToggle={() => setIsConnectionDetailsOpen((open) => !open)}
-        />
-      </div> */}
+    <div className={shellClass}>
+      <Ambient state={ariaState} />
 
-      {/* Top-right destructive action: stops the cloud agent and ends the current session. */}
-      <div className="absolute top-4 right-4">
-        <Button
-          variant="destructive"
-          size="icon"
-          className="h-9 w-9 rounded-full border-2 border-destructive bg-destructive text-destructive-foreground hover:bg-transparent hover:text-destructive"
-          onClick={onEndConversation}
-          aria-label="End conversation with AI agent"
-          title="End conversation"
-        >
-          <X />
-        </Button>
-      </div>
-
-      {/* Center stage: the visualizer shows agent lifecycle/speaking state, while hidden RemoteUser mounts keep agent audio subscribed. */}
-      <div
-        className="relative h-56 w-full flex items-center justify-center"
-        role="region"
-        aria-label="AI agent status visualization"
-      >
-        <AgentVisualizer state={visualizerState} size="lg" />
-        {remoteUsers.map((user) => (
-          <div key={user.uid} className="hidden">
-            <RemoteUser user={user} />
+      <header className="top-bar">
+        <div className="brand">
+          <div className="brand-mark">
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <circle cx="12" cy="12" r="7" opacity="0.5" />
+              <circle cx="12" cy="12" r="11" opacity="0.2" />
+            </svg>
           </div>
-        ))}
-      </div>
-
-      {/* Bottom dock: microphone mute/unmute plus input-device switching for the local user. */}
-      <div
-        className="fixed bottom-14 md:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-card/80 backdrop-blur-md border border-border rounded-full px-4 py-2"
-        role="group"
-        aria-label="Audio controls"
-      >
-        <div className="conversation-mic-host flex items-center justify-center">
-          <MicButtonWithVisualizer
-            isEnabled={isEnabled}
-            setIsEnabled={setIsEnabled}
-            track={localMicrophoneTrack}
-            onToggle={handleMicToggle}
-            className="overflow-visible"
-            aria-label={isEnabled ? 'Mute microphone' : 'Unmute microphone'}
-            enabledColor="hsl(var(--primary))"
-            disabledColor="hsl(var(--destructive))"
-          />
+          <span className="brand-name">{ARIA_AGENT_NAME}</span>
         </div>
-        <MicrophoneSelector localMicrophoneTrack={localMicrophoneTrack} />
-      </div>
 
-      {/* Transcript panel: completed turns plus the current partial turn stream into the floating chat UI. */}
-      <ConvoTextStream
-        messageList={messageList}
-        currentInProgressMessage={currentInProgressMessage}
-        agentUID={agentUID}
-        className="conversation-transcript"
-      />
+        <div className="top-meta">
+          <span className="top-meta-item">
+            <span className="live-dot" />
+            {connectedLabel}
+          </span>
+          <span className="top-meta-item top-meta-quiet">
+            End-to-end encrypted
+          </span>
+        </div>
+      </header>
+
+      <main className="stage">
+        <section className="stage-center">
+          <Persona state={ariaState} />
+
+          <div className="viz">
+            <div className="viz-row">
+              <div className="viz-label">{ARIA_AGENT_NAME}</div>
+              <Waveform
+                state={ariaState}
+                variant="agent"
+                width={640}
+                height={140}
+                audioTrack={agentMediaTrack}
+              />
+            </div>
+            <div className="viz-divider" />
+            <div className="viz-row">
+              <div className="viz-label">You</div>
+              <Waveform
+                state={ariaState}
+                variant="user"
+                width={640}
+                height={140}
+                audioTrack={userMediaTrack}
+              />
+            </div>
+          </div>
+
+          <div className="hint">{ARIA_HINT[ariaState]}</div>
+
+          {/* Hidden RemoteUser mounts keep agent audio subscribed — critical, don't remove. */}
+          {remoteUsers.map((user) => (
+            <div key={user.uid} style={{ display: 'none' }}>
+              <RemoteUser user={user} />
+            </div>
+          ))}
+        </section>
+
+        <aside className="side">
+          <div className="side-head">
+            <div className="side-title">Transcript</div>
+            <div className="side-sub">
+              Live · {transcriptEntries.length} turn
+              {transcriptEntries.length === 1 ? '' : 's'}
+            </div>
+          </div>
+          <Transcript
+            entries={transcriptEntries}
+            activeText={activeTranscript.text}
+            activeSpeaker={activeTranscript.speaker}
+            agentName={ARIA_AGENT_NAME}
+          />
+        </aside>
+      </main>
+
+      <footer className="dock">
+        <Controls
+          state={ariaState}
+          muted={!isEnabled}
+          voice={voice}
+          onVoiceChange={setVoice}
+          onToggleMute={handleMicToggle}
+          onEnd={handleEnd}
+          onRestart={handleRestart}
+          onCycle={handleCycleState}
+        />
+      </footer>
     </div>
   );
 }

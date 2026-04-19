@@ -64,13 +64,25 @@ The toolkit uses `uid="0"` as a sentinel for the local user's speech. The uikit 
 
 Include `INTERRUPTED` turns in `messageList` (filter only `IN_PROGRESS`). If the agent's first turn is interrupted, omitting it means `messageList` stays empty and `ConvoTextStream` never auto-opens.
 
+### Aria View Layer
+
+The main conversation UI is the editorial "Aria" skin in `components/aria/`: `Ambient` (drifting blob background), `Persona` (concentric-ring avatar + status pill + call timer), `Waveform` (two-row SVG bar visualizer, agent + user), `Transcript` (glass side panel with typewriter caret), `Controls` + `VoiceSelector` (pill-shaped dock).
+
+`ConversationComponent` keeps all Agora wiring (hooks, StrictMode guards, `AgoraVoiceAI` init, token refresh) and maps the existing `visualizerState` into Aria's 7-state enum via `mapToAriaState(visualizerState, isMuted, isEnded)` from `components/aria/types.ts`.
+
+Styling lives in `app/globals.css` under `.aria-shell *` selectors — **do not port these to Tailwind utilities**; the design depends on the exact CSS values (color stops, animation timings, typography metrics) matching the reference. Fonts come from `next/font/google` (Inter Tight, Instrument Serif, JetBrains Mono) wired in `app/layout.tsx`.
+
+The shader visualizer (`components/AgentShaderVisualizer/`) stays in the codebase but is only rendered at `/lab/visualizer`. It is not used by the main conversation flow.
+
 ## Architecture
 
 | Layer | Package | Role |
 |---|---|---|
 | Client UI | `agora-rtc-react` | RTC hooks (`useJoin`, `useLocalMicrophoneTrack`, `usePublish`, etc.) |
 | Toolkit core | `agora-agent-client-toolkit` | `AgoraVoiceAI`, `TurnStatus` enum, `TranscriptHelperItem` types |
-| UI components | `agora-agent-uikit` | `AudioVisualizer`, `ConvoTextStream`, `MicButtonWithVisualizer` |
+| UI components | `agora-agent-uikit` | Type exports (`AgentVisualizerState`, `IMessageListItem`) consumed by helpers in `lib/conversation.ts`. Its runtime components are no longer rendered in the main flow. |
+| View layer | local `components/aria/` | Ambient, Persona, Waveform, Transcript, Controls, VoiceSelector |
+| Visualizer (lab) | local `components/AgentShaderVisualizer/` | WebGL shader visualizer — `/lab/visualizer` only |
 | Server SDK | `agora-agent-server-sdk` | Builder pattern — `AgoraClient` → `Agent` → `session.start()` |
 | Messaging | `agora-rtm` | RTM transport for transcripts |
 
@@ -84,6 +96,8 @@ Tailwind must scan uikit classes: `./node_modules/agora-agent-uikit/dist/**/*.{j
 |---|---|
 | `components/ConversationComponent.tsx` | Core real-time UI — all Agora hooks, `AgoraVoiceAI` init, transcript state |
 | `components/LandingPage.tsx` | Entry point — session setup, RTM client lifecycle, parallel agent+RTM init |
+| `components/AgentShaderVisualizer/` | Default agent-state visualizer — WebGL shader + FFT hook + palette reader |
+| `app/lab/visualizer/page.tsx` | Standalone playground for tuning the shader visualizer |
 | `app/api/invite-agent/route.ts` | Starts AI agent — edit for system prompt, VAD, model, voice |
 | `app/api/generate-agora-token/route.ts` | Issues RTC+RTM token for the browser user |
 | `app/api/stop-conversation/route.ts` | Stops the agent |

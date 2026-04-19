@@ -2,7 +2,6 @@
 
 import { useState, useRef, Suspense, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { Loader2 } from 'lucide-react';
 import type { RTMClient } from 'agora-rtm';
 import type {
   AgoraTokenData,
@@ -10,9 +9,10 @@ import type {
   AgentResponse,
   AgoraRenewalTokens,
 } from '../types/conversation';
-import { Button } from '@/components/ui/button';
 import { ErrorBoundary } from './ErrorBoundary';
 import { LoadingSkeleton } from './LoadingSkeleton';
+import { Ambient } from './aria/Ambient';
+import { ARIA_AGENT_NAME } from './aria/types';
 
 // Dynamically import the ConversationComponent with ssr disabled
 const ConversationComponent = dynamic(() => import('./ConversationComponent'), {
@@ -177,134 +177,142 @@ export default function LandingPage() {
     [agoraData],
   );
 
-  const handleEndConversation = async () => {
-    // Stop the AI agent
-    if (agoraData?.agentId) {
-      try {
-        // console.log('Stopping agent:', agoraData.agentId);
-        const response = await fetch('/api/stop-conversation', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ agent_id: agoraData.agentId }),
-        });
-        if (!response.ok) {
-          console.error('Failed to stop agent:', await response.text());
-        }
-        // else console.log('Agent stopped successfully');
-      } catch (error) {
-        console.error('Error stopping agent:', error);
+  // Step 1 of end-call: stop the agent server-side. Keeps the conversation UI mounted
+  // so the Aria `ended` state can be dwelled-in ("Call ended" pill + "Start new call" CTA).
+  // Called from ConversationComponent's end button.
+  const handleStopAgent = useCallback(async () => {
+    if (!agoraData?.agentId) return;
+    try {
+      const response = await fetch('/api/stop-conversation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agent_id: agoraData.agentId }),
+      });
+      if (!response.ok) {
+        console.error('Failed to stop agent:', await response.text());
       }
+    } catch (error) {
+      console.error('Error stopping agent:', error);
     }
+  }, [agoraData?.agentId]);
 
-    // Tear down RTM — owned here since we created it here
+  // Step 2 of end-call: full teardown — RTM logout + unmount the conversation UI so the user
+  // is back on the pre-call landing. Also called for the historical single-step end flow
+  // (e.g. if a future consumer skips onStopAgent).
+  const handleEndConversation = useCallback(async () => {
+    // Safe to call again even if already stopped — /api/stop-conversation is idempotent.
+    await handleStopAgent();
     rtmClient?.logout().catch((err) => console.error('RTM logout error:', err));
     setRtmClient(null);
     setShowConversation(false);
-  };
+  }, [handleStopAgent, rtmClient]);
 
+  // In-call path: ConversationComponent owns its own .aria-shell. We just mount it
+  // inside the RTC provider + error boundary. The non-fatal invite warning floats
+  // on top as a toast (via .aria-invite-warn) so it doesn't disrupt the shell layout.
+  if (showConversation && agoraData && rtmClient) {
+    return (
+      <>
+        {agentJoinError && (
+          <div className="aria-invite-warn" role="alert">
+            Failed to connect with AI agent. The conversation may not work as
+            expected.
+          </div>
+        )}
+        <Suspense fallback={<LoadingSkeleton />}>
+          <ErrorBoundary>
+            <AgoraProvider>
+              <ConversationComponent
+                agoraData={agoraData}
+                rtmClient={rtmClient}
+                onTokenWillExpire={handleTokenWillExpire}
+                onEndConversation={handleEndConversation}
+                onStopAgent={handleStopAgent}
+              />
+            </AgoraProvider>
+          </ErrorBoundary>
+        </Suspense>
+      </>
+    );
+  }
+
+  // Pre-call path: editorial landing in the Aria shell. Drifting ambient blobs, brand
+  // mark in the top bar, italic serif headline, minimal ink CTA pill, quiet attribution footer.
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground relative overflow-hidden">
-      {/* Faint ambient gradient — provides depth signal on the pre-call screen */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        aria-hidden="true"
-        style={{
-          background:
-            'radial-gradient(ellipse 60% 40% at 50% 60%, hsl(194 100% 50% / 0.04) 0%, transparent 70%)',
-        }}
-      />
+    <div className="aria-shell aria-shell-idle">
+      <Ambient state="idle" />
 
-      {/* Hero shell: either shows the pre-call CTA or swaps in the live conversation experience. */}
-      <div className="flex-1 flex flex-col items-center justify-center">
-        <div className="z-10 text-center flex flex-col items-center gap-4">
-          <h1 className="text-xl font-semibold animate-fade-up">
-            Voice AI Quickstart
-          </h1>
-
-          {!showConversation && (
-            <p className="text-sm text-muted-foreground animate-fade-up animate-fade-up-d1">
-              Experience the power of <br className="sm:hidden" />
-              Agora&apos;s Conversational AI Engine.
-            </p>
-          )}
-
-          {!showConversation ? (
-            <>
-              {/* Entry CTA: starts token fetch, agent invite, and RTM setup for a new session. */}
-              <Button
-                onClick={handleStartConversation}
-                disabled={isLoading}
-                className="w-56 animate-fade-up animate-fade-up-d2 border-2 border-primary bg-primary text-primary-foreground hover:bg-transparent hover:text-primary disabled:hover:bg-primary disabled:hover:text-primary-foreground"
-                aria-label={
-                  isLoading
-                    ? 'Starting conversation with AI agent'
-                    : 'Start conversation with AI agent'
-                }
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Starting...
-                  </>
-                ) : (
-                  'Try it now!'
-                )}
-              </Button>
-              {error && <p className="text-xs text-destructive">{error}</p>}
-            </>
-          ) : agoraData && rtmClient ? (
-            <>
-              {/* Non-fatal invite warning: the browser session can still render even if agent start failed. */}
-              {agentJoinError && (
-                <div className="p-3 bg-destructive/10 rounded-md text-destructive text-sm max-w-sm">
-                  Failed to connect with AI agent. The conversation may not work
-                  as expected.
-                </div>
-              )}
-              {/* Browser-only conversation mount: RTC provider, error boundary, and lazy-loaded call UI. */}
-              <Suspense fallback={<LoadingSkeleton />}>
-                <ErrorBoundary>
-                  <AgoraProvider>
-                    <ConversationComponent
-                      agoraData={agoraData}
-                      rtmClient={rtmClient}
-                      onTokenWillExpire={handleTokenWillExpire}
-                      onEndConversation={handleEndConversation}
-                    />
-                  </AgoraProvider>
-                </ErrorBoundary>
-              </Suspense>
-            </>
-          ) : (
-            /* Fallback if session bootstrap partially succeeded but required state is missing. */
-            <p className="text-sm text-muted-foreground">
-              Failed to load conversation data.
-            </p>
-          )}
+      <header className="top-bar">
+        <div className="brand">
+          <div className="brand-mark">
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <circle cx="12" cy="12" r="7" opacity="0.5" />
+              <circle cx="12" cy="12" r="11" opacity="0.2" />
+            </svg>
+          </div>
+          <span className="brand-name">{ARIA_AGENT_NAME}</span>
         </div>
-      </div>
+      </header>
 
-      {/* Persistent attribution footer for the pre-call and in-call views. */}
-      <footer className="fixed bottom-0 left-0 py-4 pl-4 md:py-6 md:pl-6 z-40">
-        <div className="flex items-center justify-start gap-2 text-muted-foreground">
-          <span className="text-xs font-medium tracking-wide uppercase">
-            Powered by
-          </span>
-          <a
-            href="https://agora.io/en/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-primary transition-colors"
-            aria-label="Visit Agora's website"
+      <main className="aria-landing-hero">
+        <h1 className="aria-landing-headline">
+          Say hi to {ARIA_AGENT_NAME}.
+        </h1>
+        <p className="aria-landing-sub">
+          A voice-first demo of Agora&apos;s Conversational AI Engine. Tap start
+          and speak naturally &mdash; the agent listens, thinks, and replies in
+          real time.
+        </p>
+
+        {showConversation && (!agoraData || !rtmClient) ? (
+          <p className="aria-landing-sub">Failed to load conversation data.</p>
+        ) : (
+          <button
+            type="button"
+            className="aria-landing-cta"
+            onClick={handleStartConversation}
+            disabled={isLoading}
+            aria-label={
+              isLoading
+                ? `Starting conversation with ${ARIA_AGENT_NAME}`
+                : `Start conversation with ${ARIA_AGENT_NAME}`
+            }
           >
-            <img
-              src="/agora-logo-rgb-blue.svg"
-              alt="Agora"
-              className="h-6 w-auto hover:opacity-80 transition-opacity translate-y-1"
-            />
-            <span className="sr-only">Agora</span>
-          </a>
-        </div>
+            {isLoading ? (
+              <>
+                <span className="aria-landing-cta-spinner" aria-hidden="true" />
+                Starting…
+              </>
+            ) : (
+              'Start the call'
+            )}
+          </button>
+        )}
+
+        {error && <p className="aria-landing-error">{error}</p>}
+      </main>
+
+      <footer className="aria-landing-foot">
+        <span>Powered by</span>
+        <a
+          href="https://agora.io/en/"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Visit Agora's website"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/agora-logo-rgb-blue.svg" alt="Agora" />
+        </a>
       </footer>
     </div>
   );

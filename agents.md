@@ -19,6 +19,8 @@ app/
   page.tsx                           — root page, renders <LandingPage />
   layout.tsx                         — minimal shell
   globals.css                        — global styles
+  lab/
+    visualizer/page.tsx              — standalone playground for AgentShaderVisualizer
   api/
     generate-agora-token/route.ts    — GET  — issues RTC+RTM token for the browser user
     invite-agent/route.ts            — POST — starts the Agora ConvoAI agent
@@ -26,9 +28,21 @@ app/
     chat/completions/route.ts        — POST — optional custom LLM proxy (OpenAI SSE format)
 
 components/
-  LandingPage.tsx                    — entry UI; owns session setup, RTM client lifecycle
-  ConversationComponent.tsx          — live conversation UI; owns all Agora hooks + AgoraVoiceAI
-  MicrophoneSelector.tsx             — device picker dropdown
+  LandingPage.tsx                    — editorial pre-call screen + session orchestration
+  ConversationComponent.tsx          — live conversation container; owns all Agora hooks + AgoraVoiceAI, renders the Aria layout
+  aria/
+    Ambient.tsx                      — drifting blob background + grain
+    Persona.tsx                      — concentric-ring avatar, status pill, call timer
+    Waveform.tsx                     — SVG bar visualizer (two rows: agent + user)
+    Transcript.tsx                   — glass side panel, bubbles + typewriter caret
+    Controls.tsx                     — pill dock: voice, mic, keyboard, end-call
+    VoiceSelector.tsx                — voice + language popover (UI only, not wired to backend yet)
+    types.ts                         — AriaState enum + mapToAriaState + copy map
+  AgentShaderVisualizer/             — WebGL shader visualizer used at /lab/visualizer only
+    index.tsx                        — React component
+    gl.ts                            — minimal WebGL helper (no deps)
+    shader.ts                        — vertex + fragment GLSL
+    useAudioFFT.ts                   — MediaStreamTrack → bass/mid/treble bands
 
 types/
   conversation.ts                    — AgoraTokenData, ClientStartRequest, AgentResponse,
@@ -180,11 +194,15 @@ Core real-time component. Must be inside `AgoraRTCProvider`.
 - `messageList` — completed + interrupted turns (`status !== IN_PROGRESS`) mapped locally into `IMessageListItem`
 - `currentInProgressMessage` — the single in-progress turn, if any
 
-**UI kit components used:**
+**View layer (Aria):**
 
-- `AgentVisualizer` — agent-state-driven visualizer for lifecycle, listening, thinking, and speaking states
-- `ConvoTextStream` — floating chat panel with `messageList` + `currentInProgressMessage` + `agentUID`
-- `MicButtonWithVisualizer` (from `agora-agent-uikit/rtc`) — mic button with Web Audio visualization
+- `Persona`, `Waveform`, `Transcript`, `Controls`, `VoiceSelector`, `Ambient` under `components/aria/`. No uikit runtime component is rendered in the main flow.
+- State mapping: `mapToAriaState(visualizerState, !isEnabled, isEnded)` from `components/aria/types.ts` collapses the existing `AgentVisualizerState` + local mute + end flags into Aria's 7-state enum (`idle` / `listening` / `thinking` / `speaking` / `muted` / `error` / `ended`).
+- Transcript data comes from `messageList` + `currentInProgressMessage` (existing derivations from `lib/conversation.ts`) mapped into `{ speaker, text, key }` where `key = ${uid}-${turn_id}` to stay unique (turn_id is per-speaker, not globally unique).
+
+**Shader visualizer (lab-only):**
+
+- `AgentShaderVisualizer` (`components/AgentShaderVisualizer/`) is kept in the codebase and rendered at `/lab/visualizer`. Not used in the main conversation flow. Useful as a reference for anyone tapping `MediaStreamTrack` for custom audio-reactive UI.
 
 ---
 
@@ -248,3 +266,7 @@ User clicks "Try it now!"
 8. **Custom LLM proxy needs public URL** — `localhost` is not reachable by Agora's cloud. Use `ngrok http 3000` in dev.
 
 9. **Deprecated turn detection API** — use `turnDetection.config.start_of_speech` / `end_of_speech`. The old `type: 'agora_vad'` flat structure is deprecated and will be removed.
+
+10. **Shader visualizer track stability** — `getMediaStreamTrack()` on `IRemoteAudioTrack` / `IMicrophoneAudioTrack` may return a new object per call. Only the `/lab/visualizer` shader consumer needs to care; memoize on the upstream Agora track reference when passing tracks to `useAudioFFT`.
+
+11. **Transcript `turn_id` uniqueness** — `turn_id` is scoped per speaker. Use a composite React key (`${uid}-${turn_id}`) when rendering transcript entries, otherwise user + agent turns with the same index collide.
