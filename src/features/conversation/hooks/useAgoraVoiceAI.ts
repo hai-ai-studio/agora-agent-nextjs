@@ -42,6 +42,19 @@ type RtmSalStatusPayload = {
   timestamp?: number;
 };
 
+// The toolkit routes turn.finished events over RTM with e2e latency metrics
+// inside the payload. No AgoraVoiceAI-level event fires for this (the
+// AGENT_METRICS enum exists but isn't emitted in 1.2.x unless you wire up
+// @agora-js/report), so we parse the raw RTM frame directly.
+type RtmTurnFinishedPayload = {
+  event_type: 'turn.finished';
+  payload?: {
+    metrics?: {
+      e2e_latency_ms?: number;
+    };
+  };
+};
+
 function isRtmMessageErrorPayload(
   value: unknown,
 ): value is RtmMessageErrorPayload {
@@ -57,6 +70,16 @@ function isRtmSalStatusPayload(value: unknown): value is RtmSalStatusPayload {
     !!value &&
     typeof value === 'object' &&
     (value as { object?: unknown }).object === 'message.sal_status'
+  );
+}
+
+function isRtmTurnFinishedPayload(
+  value: unknown,
+): value is RtmTurnFinishedPayload {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    (value as { event_type?: unknown }).event_type === 'turn.finished'
   );
 }
 
@@ -143,26 +166,9 @@ export function useAgoraVoiceAI({
         ai.on(AgoraVoiceAIEvents.AGENT_STATE_CHANGED, (_, event) =>
           setAgentState(event.state),
         );
-        // Latency metrics — toolkit fires this per metric per turn. Log
-        // everything we see so the name filter can be tuned to the actual
-        // event vocabulary. Once confirmed, narrow the filter and drop the
-        // log.
-        ai.on(AgoraVoiceAIEvents.AGENT_METRICS, (_, metric) => {
-          console.log('[DEBUG agent-metric]', {
-            type: metric.type,
-            name: metric.name,
-            value: metric.value,
-          });
-          const n = metric.name?.toLowerCase() ?? '';
-          if (
-            n.includes('e2e') ||
-            n.includes('end_to_end') ||
-            n.includes('end-to-end') ||
-            n === 'latency'
-          ) {
-            setE2eLatencyMs(Math.round(metric.value));
-          }
-        });
+        // AGENT_METRICS event doesn't fire in toolkit 1.2.x without wiring
+        // up @agora-js/report. Latency is parsed from the raw RTM
+        // turn.finished frame instead — see handleRtmMessage below.
         ai.on(AgoraVoiceAIEvents.MESSAGE_ERROR, (agentUserId, error) => {
           addConnectionIssue({
             id: `${Date.now()}-${agentUserId}-message-error-${error.code}`,
@@ -270,6 +276,15 @@ export function useAgoraVoiceAI({
             timestamp: normalizeTimestampMs(p.timestamp ?? Date.now()),
           });
         }
+        return;
+      }
+
+      if (isRtmTurnFinishedPayload(parsed)) {
+        const ms = parsed.payload?.metrics?.e2e_latency_ms;
+        if (typeof ms === 'number' && ms > 0) {
+          setE2eLatencyMs(Math.round(ms));
+        }
+        return;
       }
     };
 
