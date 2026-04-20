@@ -14,7 +14,7 @@ A Next.js 16 (App Router) quickstart that lets a browser user speak with an Agor
 
 ## 2. Directory Map
 
-All application source lives under `src/`. Feature code is grouped under `src/features/<feature>/` (components, hooks, lib, server, types co-located).
+Single-package Next.js app. The Voice Agent Design System (`convo-ui`) lives in-tree at `src/components/convo-ui/` — the workspace + separate-package setup got rolled back to reduce complexity; future extraction (npm lib, shadcn registry, etc.) stays open. Application source lives under `src/`. Feature code is grouped under `src/features/<feature>/` (components, hooks, lib, server, types co-located).
 
 ```
 src/
@@ -24,6 +24,8 @@ src/
     globals.css                        — design tokens + body base only
     lab/
       visualizer/page.tsx              — standalone playground for AgentShaderVisualizer
+    design/
+      page.tsx                         — /design Voice Agent DS catalog (dev reference, URL-only)
     api/
       generate-agora-token/route.ts    — GET  — issues RTC+RTM token for the browser user
       invite-agent/route.ts            — POST — starts the Agora ConvoAI agent
@@ -64,12 +66,15 @@ src/
     ErrorBoundary.tsx                  — last-resort recovery UI for the in-call tree
     LoadingSkeleton.tsx                — Suspense fallback for the lazy-loaded ConversationShell
     AgentShaderVisualizer/             — WebGL shader visualizer used at /lab/visualizer only
-      index.tsx                        — React component
-      gl.ts                            — minimal WebGL helper (no deps)
-      shader.ts                        — vertex + fragment GLSL
+      index.tsx · gl.ts · shader.ts
+    convo-ui/                          — Voice Agent Design System (20 components, rendered at /design)
+      *.tsx                            — each component one file
+      *.stories.tsx                    — co-located Storybook 10 stories (CSF 4 format)
+      hooks/useTypewriter.ts           — progressive-reveal helper
+      icons.tsx                        — inline SVG icon set
+      index.ts                         — barrel re-export
     ui/
-      button.tsx                       — shadcn button (consumed by ErrorBoundary + /lab)
-      dropdown-menu.tsx                — shadcn dropdown (consumed by /lab)
+      button.tsx                       — shadcn button (consumed by ErrorBoundary)
 
   lib/
     utils.ts                           — cn() (clsx + tailwind-merge)

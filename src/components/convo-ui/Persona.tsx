@@ -2,7 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { ADA_AGENT_NAME, type AriaState } from './aria-state';
+
+// Agent identity card — avatar with pulsing rings, italic serif name, optional hint line,
+// state pill, and mm:ss call timer. Reads as a single cohesive block at the top of the
+// conversation surface. Remains purely presentational: the consumer owns `state`,
+// `resetKey`, and the displayed hint.
+
+export type PersonaState =
+  | 'connecting'
+  | 'preparing'
+  | 'idle'
+  | 'listening'
+  | 'thinking'
+  | 'speaking'
+  | 'muted'
+  | 'error';
 
 type PillVariant = {
   label: string;
@@ -11,18 +25,24 @@ type PillVariant = {
   blink: boolean;
 };
 
-const PILL_VARIANTS: Record<AriaState, PillVariant> = {
-  connecting: { label: 'Connecting', tint: 'border-line bg-white/70 text-ink-2', dotColor: 'var(--ink-4)', blink: true },
-  preparing: { label: 'Starting', tint: 'border-line bg-white/70 text-ink-2', dotColor: 'var(--ink-3)', blink: true },
-  idle: { label: 'Ready', tint: 'border-line bg-white/70 text-ink-2', dotColor: 'var(--ink)', blink: false },
-  listening: { label: 'Listening', tint: 'border-[#a7f3d0] bg-[#ecfdf5] text-[#14532d]', dotColor: 'var(--pill-listen)', blink: true },
-  thinking: { label: 'Thinking', tint: 'border-[#fde68a] bg-[#fffbeb] text-[#78350f]', dotColor: 'var(--pill-think)', blink: true },
-  speaking: { label: 'Speaking', tint: 'border-[#bfdbfe] bg-[#eff6ff] text-[#1e3a8a]', dotColor: 'var(--pill-speak)', blink: true },
-  muted: { label: 'Muted', tint: 'border-line bg-white/70 text-ink-2', dotColor: 'var(--pill-muted)', blink: false },
-  error: { label: 'Reconnecting', tint: 'border-[#fecaca] bg-[#fef2f2] text-[#7f1d1d]', dotColor: 'var(--pill-error)', blink: true },
+// Neutral pills (connecting/preparing/idle/muted) use token-driven text + a `bg-surface`
+// frosted surface that needs a dark-mode counterpart. The 4 state-colored pills
+// (listening/thinking/speaking/error) keep their hardcoded pastel palettes in both
+// themes — the saturation shift is intentional and reads as "status color" regardless
+// of surface.
+const NEUTRAL_PILL = 'border-border bg-surface/70 dark:bg-surface/5 text-foreground';
+const PILL_VARIANTS: Record<PersonaState, PillVariant> = {
+  connecting: { label: 'Connecting', tint: NEUTRAL_PILL, dotColor: 'var(--muted-foreground)', blink: true },
+  preparing: { label: 'Starting', tint: NEUTRAL_PILL, dotColor: 'var(--muted-foreground)', blink: true },
+  idle: { label: 'Ready', tint: NEUTRAL_PILL, dotColor: 'var(--foreground)', blink: false },
+  listening: { label: 'Listening', tint: 'border-[#a7f3d0] bg-[#ecfdf5] text-[#14532d]', dotColor: 'var(--state-listen)', blink: true },
+  thinking: { label: 'Thinking', tint: 'border-[#fde68a] bg-[#fffbeb] text-[#78350f]', dotColor: 'var(--state-think)', blink: true },
+  speaking: { label: 'Speaking', tint: 'border-[#bfdbfe] bg-[#eff6ff] text-[#1e3a8a]', dotColor: 'var(--state-speak)', blink: true },
+  muted: { label: 'Muted', tint: NEUTRAL_PILL, dotColor: 'var(--state-muted)', blink: false },
+  error: { label: 'Reconnecting', tint: 'border-[#fecaca] bg-[#fef2f2] text-[#7f1d1d]', dotColor: 'var(--state-error)', blink: true },
 };
 
-function StatusPill({ state }: { state: AriaState }) {
+function StatusPill({ state }: { state: PersonaState }) {
   const { label, tint, dotColor, blink } = PILL_VARIANTS[state];
   return (
     <div
@@ -41,7 +61,7 @@ function StatusPill({ state }: { state: AriaState }) {
 
 // Ring animation variants per state. Ring index (1|2|3) selects a progressively larger ring
 // so outer rings lag slightly behind inner rings during pulse, matching the original cascade.
-function ringAnimation(state: AriaState, ringIndex: 1 | 2 | 3, reduceMotion: boolean) {
+function ringAnimation(state: PersonaState, ringIndex: 1 | 2 | 3, reduceMotion: boolean) {
   if (reduceMotion) return { animate: undefined, transition: undefined, extraStyle: undefined };
   if (state === 'listening') {
     return {
@@ -80,7 +100,7 @@ function ringAnimation(state: AriaState, ringIndex: 1 | 2 | 3, reduceMotion: boo
   return { animate: undefined, transition: undefined, extraStyle: undefined };
 }
 
-function AgentAvatar({ state }: { state: AriaState }) {
+function AgentAvatar({ state, initial }: { state: PersonaState; initial: string }) {
   const reduceMotion = useReducedMotion() ?? false;
   const ringSizes: Array<{ ring: 1 | 2 | 3; size: number; baseOpacity: number }> = [
     { ring: 3, size: 68, baseOpacity: 0.4 },
@@ -95,7 +115,7 @@ function AgentAvatar({ state }: { state: AriaState }) {
         return (
           <motion.div
             key={ring}
-            className="absolute rounded-full border border-line-2 transition-[width,height] duration-700 ease-in-out"
+            className="absolute rounded-full border border-border transition-[width,height] duration-700 ease-in-out"
             style={{
               width: size,
               height: size,
@@ -107,7 +127,7 @@ function AgentAvatar({ state }: { state: AriaState }) {
           />
         );
       })}
-      <div className="relative flex size-11 items-center justify-center rounded-full bg-ink text-white shadow-[0_4px_12px_rgba(0,0,0,0.15),_inset_0_1px_0_rgba(255,255,255,0.1)] [@media(max-height:640px)]:size-9 max-[480px]:size-9">
+      <div className="relative flex size-11 items-center justify-center rounded-full bg-foreground text-background shadow-[0_4px_12px_rgba(0,0,0,0.15),_inset_0_1px_0_rgba(255,255,255,0.1)] [@media(max-height:640px)]:size-9 max-[480px]:size-9">
         <svg
           viewBox="0 0 40 40"
           width="32"
@@ -116,12 +136,12 @@ function AgentAvatar({ state }: { state: AriaState }) {
           className="[@media(max-height:640px)]:size-5 max-[480px]:size-5"
         >
           <defs>
-            <linearGradient id="aria-avatar-grad" x1="0" y1="0" x2="1" y2="1">
+            <linearGradient id="persona-avatar-grad" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stopColor="#1a1a1a" />
               <stop offset="100%" stopColor="#3a3a3a" />
             </linearGradient>
           </defs>
-          <circle cx="20" cy="20" r="18" fill="url(#aria-avatar-grad)" />
+          <circle cx="20" cy="20" r="18" fill="url(#persona-avatar-grad)" />
           <text
             x="20"
             y="26"
@@ -129,10 +149,10 @@ function AgentAvatar({ state }: { state: AriaState }) {
             fontSize="16"
             fontWeight="500"
             fill="#fff"
-            fontFamily="var(--font-serif), serif"
+            fontFamily="var(--font-display), serif"
             fontStyle="italic"
           >
-            a
+            {initial}
           </text>
         </svg>
       </div>
@@ -140,8 +160,8 @@ function AgentAvatar({ state }: { state: AriaState }) {
   );
 }
 
-// mm:ss counter, paused when call is in a terminal state. Parent remounts this via a
-// key prop bump to reset the count — lets us stay on useState(0) instead of a reset effect.
+// mm:ss counter, paused when `running` is false. Parent remounts this via a key prop bump
+// to reset the count — lets us stay on useState(0) instead of a reset effect.
 function CallTimer({ running }: { running: boolean }) {
   const [secs, setSecs] = useState(0);
 
@@ -154,39 +174,42 @@ function CallTimer({ running }: { running: boolean }) {
   const m = String(Math.floor(secs / 60)).padStart(2, '0');
   const s = String(secs % 60).padStart(2, '0');
   return (
-    <div className="font-mono text-xs tracking-[-0.02em] text-ink-3 tabular-nums">
+    <div className="font-mono text-xs tracking-[-0.02em] text-muted-foreground tabular-nums">
       {m}:{s}
     </div>
   );
 }
 
 export interface PersonaProps {
-  state: AriaState;
-  resetKey?: number;
+  state: PersonaState;
+  /** Agent display name; rendered in italic serif under the avatar. */
   name?: string;
+  /** Short status-sentence shown above the pill. Empty string renders a fixed-height
+   *  placeholder so the block height doesn't jump between hint and no-hint. */
   hint?: string;
+  /** Bump this to reset the mm:ss timer. Re-mounts the inner timer via React key. */
+  resetKey?: number;
 }
 
 export function Persona({
   state,
-  resetKey = 0,
-  name = ADA_AGENT_NAME,
+  name = 'Agent',
   hint,
+  resetKey = 0,
 }: PersonaProps) {
+  const initial = (name.trim()[0] ?? 'a').toLowerCase();
   return (
-    <div className="flex w-full max-w-3xl items-center gap-5 rounded-2xl border border-line bg-white/55 py-3.5 pl-3.5 pr-5 shadow-[0_1px_2px_rgba(0,0,0,0.02),_0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/55 [@media(max-height:640px)]:gap-3 [@media(max-height:640px)]:p-2 [@media(max-height:640px)]:pr-3.5 max-[480px]:gap-3 max-[480px]:p-2.5 max-[480px]:pr-3.5 2xl:max-w-4xl">
-      <AgentAvatar state={state} />
+    <div className="flex w-full max-w-3xl items-center gap-5 rounded-2xl border border-border bg-surface/55 py-3.5 pl-3.5 pr-5 shadow-[0_1px_2px_rgba(0,0,0,0.02),_0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-xl supports-[backdrop-filter]:bg-surface/55 dark:bg-surface/5 dark:supports-[backdrop-filter]:bg-surface/5 [@media(max-height:640px)]:gap-3 [@media(max-height:640px)]:p-2 [@media(max-height:640px)]:pr-3.5 max-[480px]:gap-3 max-[480px]:p-2.5 max-[480px]:pr-3.5 2xl:max-w-4xl">
+      <AgentAvatar state={state} initial={initial} />
       <div className="flex shrink-0 flex-col gap-2 max-[480px]:gap-1.5">
-        <div className="font-serif text-2xl italic leading-none tracking-[-0.015em] text-ink [@media(max-height:640px)]:text-xl max-[480px]:text-xl">
+        <div className="font-display text-2xl italic leading-none tracking-[-0.015em] text-foreground [@media(max-height:640px)]:text-xl max-[480px]:text-xl">
           {name}
         </div>
         {hint !== undefined && (
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={hint || 'empty'}
-              // Hidden at <=500px viewport height so dock + persona don't collide when a mobile
-              // soft keyboard cuts the viewport down (the pill below carries the active-state signal).
-              className="min-h-[19px] font-serif text-sm italic leading-snug tracking-[-0.005em] text-ink-3 [@media(max-height:640px)]:min-h-[17px] [@media(max-height:640px)]:text-xs max-[480px]:min-h-[17px] max-[480px]:text-xs [@media(max-height:500px)]:hidden"
+              className="min-h-[19px] font-display text-sm italic leading-snug tracking-[-0.005em] text-muted-foreground [@media(max-height:640px)]:min-h-[17px] [@media(max-height:640px)]:text-xs max-[480px]:min-h-[17px] max-[480px]:text-xs [@media(max-height:500px)]:hidden"
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
@@ -204,3 +227,5 @@ export function Persona({
     </div>
   );
 }
+
+export default Persona;

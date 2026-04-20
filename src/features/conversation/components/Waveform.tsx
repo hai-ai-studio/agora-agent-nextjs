@@ -202,14 +202,14 @@ export function Waveform({
   if (state === 'error') {
     fill = '#b91c1c';
   } else if (isUser) {
-    fill = state === 'listening' ? '#16a34a' : 'var(--wf-user)';
+    fill = state === 'listening' ? '#16a34a' : 'var(--muted-foreground)';
   } else {
     fill =
       state === 'speaking'
         ? '#1d4ed8'
         : state === 'thinking'
           ? '#b45309'
-          : 'var(--wf-agent)';
+          : 'var(--foreground)';
   }
   // Dim the inactive speaker's row so the active one reads as the focus.
   // thinking + error are agent-owned states — only the agent row brightens.

@@ -2,7 +2,21 @@
 
 import { motion, useReducedMotion } from 'motion/react';
 import { useSyncExternalStore } from 'react';
-import type { AriaState } from './aria-state';
+
+// Drifting radial blobs + SVG grain overlay. Pure decoration — no layout, no interaction.
+// The `state` prop tints one of three blobs per state; unspecified states fall through to
+// the base warm palette. Intended as an absolute-positioned layer behind conversation
+// surfaces. Keep `pointer-events-none` at the call site.
+
+export type AmbientState =
+  | 'connecting'
+  | 'preparing'
+  | 'idle'
+  | 'listening'
+  | 'thinking'
+  | 'speaking'
+  | 'muted'
+  | 'error';
 
 // SVG grain overlay. Encoded once so the data URI isn't rebuilt per render.
 const GRAIN_URL =
@@ -25,9 +39,6 @@ type BlobPosition = {
   duration: number;
 };
 
-// Light-mode blob palette. Picked to match the reference editorial design — warm-cool balance
-// with tinted accents that shift per state (listening→green, thinking→amber, speaking→blue,
-// error→red). Kept as JS data because motion drives the transforms and state drives the color.
 const BLOB_LIGHT = {
   base: [
     { background: 'radial-gradient(circle, #e8f0ff 0%, transparent 70%)', opacity: 0.55 },
@@ -39,10 +50,9 @@ const BLOB_LIGHT = {
     thinking: { 1: { background: 'radial-gradient(circle, #f5e4c4 0%, transparent 70%)', opacity: 0.8 } },
     speaking: { 2: { background: 'radial-gradient(circle, #dce4f7 0%, transparent 70%)', opacity: 0.85, transform: 'scale(1.15)' } },
     error: { 0: { background: 'radial-gradient(circle, #f5d4d4 0%, transparent 70%)', opacity: 0.7 } },
-  } as Partial<Record<AriaState, Record<number, BlobSpec>>>,
+  } as Partial<Record<AmbientState, Record<number, BlobSpec>>>,
 };
 
-// Dark-mode palette. Cooler, dimmer hues so the ambient layer doesn't feel saccharine.
 const BLOB_DARK = {
   base: [
     { background: 'radial-gradient(circle, #1f2a48 0%, transparent 70%)', opacity: 0.35 },
@@ -54,21 +64,18 @@ const BLOB_DARK = {
     thinking: { 1: { background: 'radial-gradient(circle, #4a3418 0%, transparent 70%)', opacity: 0.5 } },
     speaking: { 2: { background: 'radial-gradient(circle, #1f2e55 0%, transparent 70%)', opacity: 0.55, transform: 'scale(1.15)' } },
     error: { 0: { background: 'radial-gradient(circle, #441a1a 0%, transparent 70%)', opacity: 0.45 } },
-  } as Partial<Record<AriaState, Record<number, BlobSpec>>>,
+  } as Partial<Record<AmbientState, Record<number, BlobSpec>>>,
 };
 
-// Positioning + drift amplitudes for each blob. Drift values are the peak offsets used by
-// motion's keyframe arrays; durations are the original 22s / 28s / 34s loops.
 const BLOB_CONFIG: BlobPosition[] = [
   { size: 640, top: -200, left: -140, driftX: [0, 40, 0], driftY: [0, 30, 0], duration: 22 },
   { size: 520, bottom: -160, right: -120, driftX: [0, -30, 0], driftY: [0, -40, 0], duration: 28 },
   { size: 420, top: '40%', left: '55%', driftX: [0, -50, 0], driftY: [0, 20, 0], duration: 34 },
 ];
 
-// SSR returns false (server has no OS preference) — the client re-subscribes on mount
-// via useSyncExternalStore, so dark users see a brief light flash that swaps once the
-// media query reports. Tokens in :root still flip from the CSS @media block, so only
-// the blob tints (driven by JS) show this flicker — acceptable for a decorative layer.
+// SSR returns false (server has no OS preference). Client re-subscribes on mount via
+// useSyncExternalStore, so dark users see a brief light flash that swaps once the media
+// query reports — acceptable for a decorative layer.
 function subscribeDarkMedia(onChange: () => void) {
   const media = window.matchMedia('(prefers-color-scheme: dark)');
   media.addEventListener('change', onChange);
@@ -77,22 +84,30 @@ function subscribeDarkMedia(onChange: () => void) {
 function getDarkMediaMatches() {
   return window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
-function useIsDark() {
-  return useSyncExternalStore(
+function useIsDark(forceDark?: boolean) {
+  const systemDark = useSyncExternalStore(
     subscribeDarkMedia,
     getDarkMediaMatches,
     () => false,
   );
+  return forceDark ?? systemDark;
 }
 
-function specFor(state: AriaState, index: number, isDark: boolean): BlobSpec {
+function specFor(state: AmbientState, index: number, isDark: boolean): BlobSpec {
   const palette = isDark ? BLOB_DARK : BLOB_LIGHT;
   const override = palette.tints[state]?.[index];
   return override ?? palette.base[index];
 }
 
-export function Ambient({ state }: { state: AriaState }) {
-  const isDark = useIsDark();
+export interface AmbientProps {
+  state: AmbientState;
+  // Force the palette independent of the system color scheme. Useful for Storybook stages
+  // that pin a dark background.
+  dark?: boolean;
+}
+
+export function Ambient({ state, dark }: AmbientProps) {
+  const isDark = useIsDark(dark);
   const reduceMotion = useReducedMotion();
 
   return (
@@ -142,3 +157,5 @@ export function Ambient({ state }: { state: AriaState }) {
     </div>
   );
 }
+
+export default Ambient;

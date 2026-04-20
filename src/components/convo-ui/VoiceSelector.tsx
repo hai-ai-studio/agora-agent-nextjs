@@ -1,0 +1,237 @@
+'use client';
+
+import { useEffect, useId, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+
+// Compact combined voice + language picker. Sits inside the call-dock. Distinct from:
+//  - VoicePicker → card grid for the voice library page
+//  - LanguagePicker → standalone language dropdown
+// This one is a single ink-dot pill that opens a two-section menu (Voice over Language).
+
+export interface VoiceSelectorVoice {
+  id: string;
+  name: string;
+  desc: string;
+  disabled?: boolean;
+}
+
+export interface VoiceSelectorLang {
+  label: string;
+  disabled?: boolean;
+}
+
+const DEFAULT_VOICES: VoiceSelectorVoice[] = [
+  { id: 'ada', name: 'Ada', desc: 'Warm, conversational' },
+  { id: 'nova', name: 'Nova', desc: 'Crisp, professional', disabled: true },
+  { id: 'sol', name: 'Sol', desc: 'Calm, thoughtful', disabled: true },
+  { id: 'echo', name: 'Echo', desc: 'Playful, curious', disabled: true },
+];
+
+const DEFAULT_LANGS: VoiceSelectorLang[] = [
+  { label: 'English (US)' },
+  { label: 'English (UK)', disabled: true },
+  { label: '日本語', disabled: true },
+  { label: 'Español', disabled: true },
+  { label: 'Deutsch', disabled: true },
+  { label: 'Français', disabled: true },
+];
+
+function IconChevron() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+
+export interface VoiceSelectorProps {
+  voice: string;
+  onVoiceChange: (id: string) => void;
+  /** Currently-selected language label. When undefined the component self-manages. */
+  language?: string;
+  onLanguageChange?: (label: string) => void;
+  voices?: VoiceSelectorVoice[];
+  languages?: VoiceSelectorLang[];
+}
+
+export function VoiceSelector({
+  voice,
+  onVoiceChange,
+  language,
+  onLanguageChange,
+  voices = DEFAULT_VOICES,
+  languages = DEFAULT_LANGS,
+}: VoiceSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const [internalLang, setInternalLang] = useState<string>(
+    languages.find((l) => !l.disabled)?.label ?? languages[0]?.label ?? '',
+  );
+  const effectiveLang = language ?? internalLang;
+  const setLang = (next: string) => {
+    if (onLanguageChange) onLanguageChange(next);
+    else setInternalLang(next);
+  };
+  // Per-instance DOM-scoping class so the outside-click handler only closes THIS picker
+  // when multiple VoiceSelectors sit on the same page.
+  const reactId = useId();
+  const scopeClass = `voice-sel-${reactId.replace(/:/g, '')}`;
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target?.closest(`.${scopeClass}`)) setOpen(false);
+    };
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [open, scopeClass]);
+
+  const current =
+    voices.find((v) => v.id === voice && !v.disabled) ??
+    voices.find((v) => !v.disabled) ??
+    voices[0];
+
+  return (
+    <div className={`${scopeClass} relative mr-1 shrink-0`}>
+      {/* Below 480px the trigger collapses to a 36×36 ink-dot pill to reclaim dock
+          width; the menu itself is unchanged and `aria-label` keeps the full
+          semantic label for screen readers. */}
+      <button
+        type="button"
+        className="flex h-9 w-52 shrink-0 cursor-pointer items-center gap-2 rounded-full border border-border bg-surface/60 px-3.5 font-ui text-xs font-medium text-foreground transition-colors duration-150 hover:border-border dark:bg-surface/10 max-[480px]:w-9 max-[480px]:justify-center max-[480px]:gap-0 max-[480px]:px-0"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Voice: ${current?.name ?? '—'}, language: ${effectiveLang}. Change voice or language.`}
+      >
+        <span className="size-2 shrink-0 rounded-full bg-foreground" />
+        <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap max-[480px]:hidden">
+          {current?.name}
+        </span>
+        <span className="mx-0.5 h-3.5 w-px shrink-0 bg-border max-[480px]:hidden" />
+        <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs font-normal text-muted-foreground max-[480px]:hidden">
+          {effectiveLang}
+        </span>
+        <span className="max-[480px]:hidden">
+          <IconChevron />
+        </span>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <VoiceMenu
+            voices={voices}
+            languages={languages}
+            voice={voice}
+            onVoiceChange={onVoiceChange}
+            lang={effectiveLang}
+            onLangChange={setLang}
+            onClose={() => setOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+interface VoiceMenuProps {
+  voices: VoiceSelectorVoice[];
+  languages: VoiceSelectorLang[];
+  voice: string;
+  onVoiceChange: (id: string) => void;
+  lang: string;
+  onLangChange: (l: string) => void;
+  onClose: () => void;
+}
+
+// `disabled:text-muted-foreground` (not `disabled:opacity-50`) so disabled text stays
+// AA-compliant; opacity would dim the foreground below the 4.5:1 threshold.
+const OPT_BASE =
+  'flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-2 text-left font-ui text-xs text-foreground transition-colors duration-100 hover:bg-muted disabled:cursor-default disabled:text-muted-foreground disabled:hover:bg-transparent';
+
+function VoiceMenu({
+  voices,
+  languages,
+  voice,
+  onVoiceChange,
+  lang,
+  onLangChange,
+  onClose,
+}: VoiceMenuProps) {
+  return (
+    <motion.div
+      role="menu"
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 4 }}
+      transition={{ duration: 0.18, ease: 'easeOut' }}
+      className="absolute bottom-[calc(100%+12px)] left-0 z-10 w-64 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-surface/95 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.12)] backdrop-blur-xl supports-[backdrop-filter]:bg-surface/95 dark:bg-warm-7/90 dark:supports-[backdrop-filter]:bg-warm-7/80 max-sm:left-auto max-sm:right-0"
+    >
+      <div className="px-2.5 pb-1.5 pt-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+        Voice
+      </div>
+      {voices.map((v) => (
+        <button
+          key={v.id}
+          type="button"
+          className={`${OPT_BASE} ${v.id === voice ? 'text-foreground' : ''}`}
+          disabled={v.disabled}
+          aria-disabled={v.disabled}
+          onClick={() => {
+            if (v.disabled) return;
+            onVoiceChange(v.id);
+            onClose();
+          }}
+        >
+          <div>
+            <div className="text-sm font-medium">{v.name}</div>
+            <div className="mt-0.5 text-xs text-muted-foreground">{v.desc}</div>
+          </div>
+          {v.id === voice && <span className="text-xs text-foreground">✓</span>}
+          {v.disabled && <SoonBadge />}
+        </button>
+      ))}
+      <div className="mx-1 my-1.5 h-px bg-border" />
+      <div className="px-2.5 pb-1.5 pt-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+        Language
+      </div>
+      {languages.map((l) => (
+        <button
+          key={l.label}
+          type="button"
+          className={`${OPT_BASE} ${l.label === lang ? 'text-foreground' : ''}`}
+          disabled={l.disabled}
+          aria-disabled={l.disabled}
+          onClick={() => {
+            if (l.disabled) return;
+            onLangChange(l.label);
+          }}
+        >
+          {l.label}
+          {l.label === lang && <span className="text-xs text-foreground">✓</span>}
+          {l.disabled && <SoonBadge />}
+        </button>
+      ))}
+    </motion.div>
+  );
+}
+
+function SoonBadge() {
+  return (
+    <span className="rounded border border-border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+      Soon
+    </span>
+  );
+}
+
+export { DEFAULT_VOICES, DEFAULT_LANGS };
+export default VoiceSelector;

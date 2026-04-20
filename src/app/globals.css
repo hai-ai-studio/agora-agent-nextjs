@@ -1,103 +1,274 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind v4 — shadcn-style token model. See docs/decisions/0005-shadcn-tokens.md
+   for the rationale.
+   - Two text levels: `--foreground` (strong) + `--muted-foreground` (quieter).
+     Anything quieter uses opacity: `text-muted-foreground/60`.
+   - Surface / fg pairs — each surface has a companion foreground token so
+     contrast is a pair-level guarantee, not a per-token accident.
+   - Borders + form-input + focus ring are their own tokens. `--input` / `--ring`
+     carry the WCAG 3:1 non-text obligation; `--border` is for looser decorative
+     separators.
+   - Warm neutrals + voice brand colors remain as primitives (Foundations only). */
+@import "tailwindcss";
 
-/* Light-mode tokens. Aria surfaces read these via Tailwind utilities (bg-ink, text-ink-3,
-   border-line, etc. — wired in tailwind.config.ts). The legacy HSL block below remains for
-   shadcn components at /lab/visualizer. All animations and component styling live in JSX
-   (Tailwind utilities + motion/react components); globals.css is tokens + body base only. */
+/* -----------------------------------------------------------------------------
+   @theme — CSS variables exposed as Tailwind utilities.
+   ----------------------------------------------------------------------------- */
+@theme {
+  /* Primitives — fixed scales. Don't consume directly except in Foundations
+     or when deliberately pinning a theme. */
+  --color-warm-0: var(--warm-0);
+  --color-warm-1: var(--warm-1);
+  --color-warm-2: var(--warm-2);
+  --color-warm-3: var(--warm-3);
+  --color-warm-4: var(--warm-4);
+  --color-warm-5: var(--warm-5);
+  --color-warm-6: var(--warm-6);
+  --color-warm-7: var(--warm-7);
+  --color-warm-8: var(--warm-8);
+  --color-warm-9: var(--warm-9);
+  --color-warm-10: var(--warm-10);
+  --color-warm-11: var(--warm-11);
+
+  /* Brand — voice gradient (theme-invariant). */
+  --color-voice-a: var(--voice-a);
+  --color-voice-b: var(--voice-b);
+  --color-voice-c: var(--voice-c);
+
+  /* Semantic pairs — each surface has a paired foreground. Using the pair
+     (bg-X + text-X-foreground) guarantees AA contrast. */
+  --color-background:              var(--background);
+  --color-foreground:              var(--foreground);
+  --color-surface:                 var(--surface);
+  --color-surface-foreground:      var(--surface-foreground);
+  --color-surface-elevated:        var(--surface-elevated);
+  --color-surface-elevated-foreground: var(--surface-elevated-foreground);
+  --color-muted:                   var(--muted);
+  --color-muted-foreground:        var(--muted-foreground);
+  --color-accent:                  var(--accent);
+  --color-accent-foreground:       var(--accent-foreground);
+  --color-destructive:             var(--destructive);
+  --color-destructive-foreground:  var(--destructive-foreground);
+
+  /* Structural */
+  --color-border:                  var(--border);
+  --color-input:                   var(--input);
+  --color-ring:                    var(--ring);
+
+  /* State pills — agent conversation states. Used as dot colors and pill tints. */
+  --color-state-listen:  var(--state-listen);
+  --color-state-think:   var(--state-think);
+  --color-state-speak:   var(--state-speak);
+  --color-state-muted:   var(--state-muted);
+  --color-state-error:   var(--state-error);
+
+  /* Semantic intent */
+  --color-success:   var(--success);
+  --color-warning:   var(--warning);
+  --color-info:      var(--info);
+
+  /* shadcn-compat aliases for legacy components (ui/button, LoadingSkeleton,
+     ErrorBoundary, /lab/visualizer). Point at the same semantic roles. */
+  --color-card:              var(--surface);
+  --color-card-foreground:   var(--surface-foreground);
+  --color-popover:           var(--surface-elevated);
+  --color-popover-foreground: var(--surface-elevated-foreground);
+  --color-primary:           var(--accent);
+  --color-primary-foreground: var(--accent-foreground);
+  --color-secondary:         var(--muted);
+  --color-secondary-foreground: var(--muted-foreground);
+
+  /* Typography — Geist (UI) + Instrument Serif (display) + Geist Mono (data). */
+  --font-ui:       var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display:  var(--font-instrument-serif), Georgia, serif;
+  --font-mono:     var(--font-geist-mono-face), ui-monospace, SFMono-Regular, monospace;
+
+  /* Animations + eases */
+  --animate-breathe: breathe 1.6s cubic-bezier(0.32, 0.72, 0, 1) infinite;
+  --animate-pulse-ring: pulse-ring 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  --animate-typing-dot: typing-dot 1.2s infinite;
+  --animate-caret-blink: caret-blink 1s infinite;
+  --animate-slide-up: slide-up 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-rotate-slow: rotate-slow 12s linear infinite;
+
+  --ease-aria-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-organic: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring: cubic-bezier(0.5, 1.4, 0.4, 1);
+}
+
+/* -----------------------------------------------------------------------------
+   Light theme source values.
+   ----------------------------------------------------------------------------- */
 :root {
   color-scheme: light;
 
-  /* --- Aria editorial token set (main UX) --- */
-  --bg: #fafaf7;
-  --bg-2: #f4f3ee;
-  --ink: #0b0b0c;
-  --ink-2: #2a2a2d;
-  --ink-3: #6b6b70;
-  --ink-4: #a7a7ac;
-  --line: rgba(11, 11, 12, 0.08);
-  --line-2: rgba(11, 11, 12, 0.14);
-  --accent: #0b0b0c;
+  /* Primitives */
+  --warm-0:  #fafaf7;
+  --warm-1:  #f4f3ee;
+  --warm-2:  #eae8e0;
+  --warm-3:  #d7d4c8;
+  --warm-4:  #a8a49a;
+  --warm-5:  #6b6862;
+  --warm-6:  #2a2a27;
+  --warm-7:  #0a0a09;
+  --warm-8:  #14140f;
+  --warm-9:  #1f1e18;
+  --warm-10: #2a2924;
+  --warm-11: #3d3b34;
 
-  --wf-agent: #0b0b0c;
-  --wf-user: #8a8a90;
+  /* Brand */
+  --voice-a: #7c5cff;
+  --voice-b: #e85c8a;
+  --voice-c: #f5a55c;
 
-  --pill-idle: #0b0b0c;
-  --pill-listen: #16a34a;
-  --pill-think: #b45309;
-  --pill-speak: #1d4ed8;
-  --pill-muted: #6b6b70;
-  --pill-error: #b91c1c;
+  /* Semantic pairs — two text levels only */
+  --background:                     #fafaf7;
+  --foreground:                     #0b0b0c;  /* ~18:1 on bg — AAA */
 
-  /* --- Legacy HSL token set (kept for shadcn components + /lab route) --- */
+  --surface:                        #ffffff;
+  --surface-foreground:             #0b0b0c;  /* ~20:1 on surface */
 
-  --background:       220 20% 98%;
-  --surface:          220 18% 96%;
-  --surface-elevated: 220 16% 94%;
+  --surface-elevated:               #ffffff;
+  --surface-elevated-foreground:    #0b0b0c;
 
-  --card:             0 0% 100%;
-  --card-foreground:  220 25% 12%;
-  --popover:          0 0% 100%;
-  --popover-foreground: 220 25% 12%;
-  --muted:            220 14% 94%;
+  --muted:                          #f4f3ee;
+  --muted-foreground:               #57574f;  /* ~7.3:1 on muted, ~7.1:1 on background — comfortably AA */
 
-  --border:           220 13% 88%;
-  --input:            220 13% 88%;
+  /* Accent is a DARKER violet than voice-a, chosen for AA contrast with accent-foreground
+     (white). `--voice-a` stays the brand color for gradients / orbs / decorative glows;
+     `--accent` is the functional "call to action" fill with compliance obligations. */
+  --accent:                         #5a3edb;   /* white on this = 6.7:1 — AA */
+  --accent-foreground:              #ffffff;
 
-  --foreground:       220 25% 12%;
-  --muted-foreground: 220 10% 42%;
+  --destructive:                    #b91c1c;
+  --destructive-foreground:         #ffffff;   /* ~5.9:1 — AA */
 
-  --primary:            194 100% 42%;
-  --primary-foreground: 220 25% 12%;
+  /* Structural */
+  --border:                         rgba(11, 11, 12, 0.1);
+  --input:                          rgba(11, 11, 12, 0.2);    /* 3:1+ when form needs it */
+  --ring:                           var(--voice-a);
 
-  --secondary:            220 14% 94%;
-  --secondary-foreground: 220 25% 12%;
+  /* State pills */
+  --state-listen:  #16a34a;
+  --state-think:   #b45309;
+  --state-speak:   #1d4ed8;
+  --state-muted:   #57574f;
+  --state-error:   #b91c1c;
 
-  /* shadcn --accent intentionally overrides the Aria --accent above. Aria surfaces
-     don't consume var(--accent) directly (Tailwind reads it as the `accent` color); the
-     shadcn HSL value is needed for the /lab route's shadcn components. */
-  --accent:            194 100% 42%;
-  --accent-foreground: 220 25% 12%;
+  /* Intent */
+  --success:  #166534;
+  --warning:  #92400e;
+  --info:     #1e40af;
 
-  --destructive:            0 72% 52%;
-  --destructive-foreground: 0 0% 100%;
-
-  --ring: 194 100% 42%;
   --radius: 0.5rem;
-
-  --chart-1: 194 100% 42%;
-  --chart-2: 220 10% 45%;
-  --chart-3: 220 10% 35%;
-  --chart-4: 0 72% 52%;
-  --chart-5: 150 50% 40%;
-
-  --sidebar-background:         0 0% 100%;
-  --sidebar-foreground:         220 25% 12%;
-  --sidebar-primary:            194 100% 42%;
-  --sidebar-primary-foreground: 220 25% 12%;
-  --sidebar-accent:             220 14% 94%;
-  --sidebar-accent-foreground:  220 25% 12%;
-  --sidebar-border:             220 13% 88%;
-  --sidebar-ring:               194 100% 42%;
-
-  --viz-stop-1: 225 92% 50%;
-  --viz-stop-2: 220 14% 78%;
-  --viz-stop-3: 285 58% 48%;
 }
 
-/* Tailwind-animate needs explicit keyframes for the accordion slide utilities used by
-   Radix-based shadcn components at /lab/visualizer. Everything else lives in JSX. */
-@keyframes accordion-down {
-  from { height: 0; }
-  to { height: var(--radix-accordion-content-height); }
-}
-@keyframes accordion-up {
-  from { height: var(--radix-accordion-content-height); }
-  to { height: 0; }
+/* -----------------------------------------------------------------------------
+   Dark theme — semantic tokens flip. Primitives + brand stay put.
+   Triggers: OS `prefers-color-scheme: dark` + explicit `.dark` class.
+   ----------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --background:                   #0c0c0e;
+    --foreground:                   #f2f2ee;  /* ~18:1 on bg */
+
+    --surface:                      #1f1e18;
+    --surface-foreground:            #f2f2ee;
+
+    --surface-elevated:             #2a2924;
+    --surface-elevated-foreground:  #f2f2ee;
+
+    --muted:                        #14140f;
+    --muted-foreground:             #a8a49a;   /* ~7.4:1 on muted — AA */
+
+    --accent-foreground:            #ffffff;
+
+    --destructive:                  #ef4444;
+    --destructive-foreground:       #ffffff;
+
+    --border:                       rgba(255, 255, 255, 0.1);
+    --input:                        rgba(255, 255, 255, 0.2);
+    --ring:                         var(--voice-a);
+
+    --state-listen:  #22c55e;
+    --state-think:   #d97706;
+    --state-speak:   #3b82f6;
+    --state-muted:   #a8a49a;
+    --state-error:   #ef4444;
+
+    --success:  #22c55e;
+    --warning:  #f59e0b;
+    --info:     #3b82f6;
+  }
 }
 
-/* next/font injects --font-sans / --font-serif / --font-mono on <html> via app/layout.tsx. */
+.dark {
+  color-scheme: dark;
+
+  --background:                   #0c0c0e;
+  --foreground:                   #f2f2ee;
+
+  --surface:                      #1f1e18;
+  --surface-foreground:            #f2f2ee;
+
+  --surface-elevated:             #2a2924;
+  --surface-elevated-foreground:  #f2f2ee;
+
+  --muted:                        #14140f;
+  --muted-foreground:             #a8a49a;
+
+  --accent-foreground:            #ffffff;
+
+  --destructive:                  #ef4444;
+  --destructive-foreground:       #ffffff;
+
+  --border:                       rgba(255, 255, 255, 0.1);
+  --input:                        rgba(255, 255, 255, 0.2);
+  --ring:                         var(--voice-a);
+
+  --state-listen:  #22c55e;
+  --state-think:   #d97706;
+  --state-speak:   #3b82f6;
+  --state-muted:   #a8a49a;
+  --state-error:   #ef4444;
+
+  --success:  #22c55e;
+  --warning:  #f59e0b;
+  --info:     #3b82f6;
+}
+
+/* -----------------------------------------------------------------------------
+   Keyframes
+   ----------------------------------------------------------------------------- */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+@keyframes typing-dot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+@keyframes caret-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes rotate-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* -----------------------------------------------------------------------------
+   Base layer
+   ----------------------------------------------------------------------------- */
 html,
 body,
 #__next {
@@ -105,78 +276,10 @@ body,
 }
 
 body {
-  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: var(--ink);
-  background: var(--bg);
+  font-family: var(--font-ui);
+  color: var(--foreground);
+  background: var(--background);
   -webkit-font-smoothing: antialiased;
-  font-feature-settings: 'ss01', 'cv11';
-  overflow: hidden;
-}
-
-/* Dark-mode token overrides. Only root variables + structural tints — Ambient.tsx reads
-   prefers-color-scheme directly for blob gradients so those don't live here. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-
-    /* Aria token set */
-    --bg: #0c0c0e;
-    --bg-2: #16161a;
-    --ink: #f2f2ee;
-    --ink-2: #c6c6c9;
-    --ink-3: #8a8a8e;
-    --ink-4: #5a5a5e;
-    --line: rgba(255, 255, 255, 0.08);
-    --line-2: rgba(255, 255, 255, 0.14);
-    --accent: #f2f2ee;
-
-    --wf-agent: #f2f2ee;
-    --wf-user: #6a6a70;
-
-    --pill-idle: #f2f2ee;
-    --pill-listen: #22c55e;
-    --pill-think: #d97706;
-    --pill-speak: #3b82f6;
-    --pill-muted: #6a6a70;
-    --pill-error: #ef4444;
-
-    /* Legacy HSL token set — keeps shadcn components at /lab/visualizer working. */
-    --background:       220 14% 5%;
-    --surface:          220 12% 9%;
-    --surface-elevated: 220 10% 13%;
-    --card:             220 12% 9%;
-    --card-foreground:  220 15% 95%;
-    --popover:          220 10% 13%;
-    --popover-foreground: 220 15% 95%;
-    --muted:            220 12% 9%;
-    --border:           220 10% 18%;
-    --input:            220 10% 18%;
-    --foreground:       220 15% 95%;
-    --muted-foreground: 220 10% 50%;
-    --primary:            194 100% 50%;
-    --primary-foreground: 220 14% 5%;
-    --secondary:            220 10% 13%;
-    --secondary-foreground: 220 15% 95%;
-    --accent:            194 100% 50%;
-    --accent-foreground: 220 14% 5%;
-    --destructive:            0 72% 58%;
-    --destructive-foreground: 0 0% 100%;
-    --ring: 194 100% 50%;
-    --chart-1: 194 100% 50%;
-    --chart-2: 220 10% 60%;
-    --chart-3: 220 10% 40%;
-    --chart-4: 0 72% 58%;
-    --chart-5: 150 60% 45%;
-    --sidebar-background:         220 12% 9%;
-    --sidebar-foreground:         220 15% 95%;
-    --sidebar-primary:            194 100% 50%;
-    --sidebar-primary-foreground: 220 14% 5%;
-    --sidebar-accent:             220 10% 13%;
-    --sidebar-accent-foreground:  220 15% 95%;
-    --sidebar-border:             220 10% 18%;
-    --sidebar-ring:               194 100% 50%;
-    --viz-stop-1: 194 100% 58%;
-    --viz-stop-2: 215 42% 72%;
-    --viz-stop-3: 272 62% 72%;
-  }
+  font-feature-settings: "ss01", "cv11";
+  overflow-x: hidden;
 }

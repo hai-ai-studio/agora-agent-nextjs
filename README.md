@@ -71,8 +71,9 @@ Examples:
 
 ## Repo Map
 
-Source lives under `src/`. Feature code is co-located under `src/features/<feature>/`.
+This is a **pnpm workspace**. The Next.js quickstart lives at the root; the Voice Agent design system ships as a sibling package under `packages/`.
 
+**App (root)** — conversation feature, using the existing "Aria" design:
 - `src/app/api/generate-agora-token/route.ts` issues RTC + RTM tokens
 - `src/app/api/invite-agent/route.ts` starts the agent session
 - `src/app/api/stop-conversation/route.ts` stops the agent session
@@ -81,8 +82,17 @@ Source lives under `src/`. Feature code is co-located under `src/features/<featu
 - `src/features/conversation/hooks/` `useStrictModeReady`, `useAgoraVoiceAI`, `useTokenRefresh`, `useAgoraSession`
 - `src/features/conversation/components/` Aria view layer — `Ambient`, `Persona`, `Waveform`, `Transcript`, `Controls`, `VoiceSelector`, `MicPicker` (plus `aria-state.ts` for the view-state enum + copy)
 - `src/features/conversation/server/invite-agent-config.ts` system prompt + greeting (edit to change persona)
-- `src/features/visualizer-lab/components/AgentShaderVisualizer/` WebGL-shader visualizer used by the `/lab/visualizer` playground (not in the main flow)
+- `src/components/AgentShaderVisualizer/` WebGL-shader visualizer used by the `/lab/visualizer` playground
 - `src/app/lab/visualizer/` standalone page for tuning the shader visualizer
+- `src/app/design/` Voice Agent DS catalog (`/design`)
+
+**Voice Agent DS — `convo-ui`** (`src/components/convo-ui/`):
+- 20 React components + 1 hook for real-time conversational AI UX (voice orb, waveforms, transcripts, call controls, voice + language pickers, tool calls, permission, audio player)
+- Rendered in catalog form at `/design`
+- **Storybook 10** at repo-root `.storybook/`:
+  - `pnpm storybook` — dev server on `http://localhost:6006`
+  - `pnpm build-storybook` — static export to `storybook-static/`
+- Design decision: [`docs/decisions/0003-voice-design-system.md`](docs/decisions/0003-voice-design-system.md) (in-tree for now; npm package or shadcn registry extraction deferred)
 
 ## More Docs
 

@@ -1,8 +1,8 @@
 'use client';
 
 import type { IMicrophoneAudioTrack } from 'agora-rtc-react';
+import { VoiceSelector } from '@/components/convo-ui';
 import { MicPicker } from './MicPicker';
-import { VoiceSelector } from './VoiceSelector';
 function IconMic({ muted }: { muted: boolean }) {
   return (
     <svg
@@ -83,22 +83,22 @@ export interface ControlsProps {
 
 // Utility class fragments for the dock buttons. Pulled out so the variants below stay readable.
 const DOCK_PILL =
-  'flex items-center gap-2.5 rounded-full border border-line bg-white/70 px-2 py-2 shadow-[0_2px_4px_rgba(0,0,0,0.03),_0_12px_40px_rgba(0,0,0,0.08)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/70';
+  'flex items-center gap-2.5 rounded-full border border-border bg-surface/70 px-2 py-2 shadow-[0_2px_4px_rgba(0,0,0,0.03),_0_12px_40px_rgba(0,0,0,0.08)] backdrop-blur-xl supports-[backdrop-filter]:bg-surface/70';
 
 const CTRL_BTN =
-  'flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-none bg-transparent text-ink transition-colors duration-150 hover:bg-black/5 disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent';
+  'flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-none bg-transparent text-foreground transition-colors duration-150 hover:bg-black/5 disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent';
 
 // Active toggle variant — dark fill with inverted icon color. `!` importance on bg + text
-// is needed for the same reason as CTRL_END: CTRL_BTN's `bg-transparent` and `text-ink` can
+// is needed for the same reason as CTRL_END: CTRL_BTN's `bg-transparent` and `text-foreground` can
 // win over these in the generated CSS depending on Tailwind class emit order.
-const CTRL_ACTIVE = '!bg-ink !text-white hover:!bg-ink-2';
+const CTRL_ACTIVE = '!bg-foreground !text-accent-foreground hover:!bg-foreground/90';
 
 // End-call variant — red fill, darker red on hover. Both `!bg-*` importance flags are
 // required: without them, `bg-transparent` / `hover:bg-black/5` from CTRL_BTN can win in
 // the cascade depending on Tailwind class emit order, making the hangup button render
 // transparent or gray instead of the expected red.
 const CTRL_END =
-  '!bg-[#dc2626] text-white hover:!bg-[#b91c1c]';
+  '!bg-[#dc2626] text-accent-foreground hover:!bg-[#b91c1c]';
 
 export function Controls({
   muted,

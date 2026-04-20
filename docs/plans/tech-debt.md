@@ -4,7 +4,8 @@
 
 ## Code
 
-- `pnpm-workspace.yaml` at repo root is untracked — predates recent refactors, needs decision: commit or gitignore.
+- ~~`pnpm-workspace.yaml` at repo root is untracked~~. **Resolved 2026-04-20** — workspace got set up for `packages/convo-ui/`, then rolled back (DS merged back into `src/components/convo-ui/`). File removed.
+- `convo-ui` DS lives in-tree at `src/components/convo-ui/`. Future extraction path (npm lib or shadcn registry) stays open but not scoped; revisit once the API stabilizes.
 - `VoiceSelector` / language options in the dock are UI-only; selection isn't plumbed through `/api/invite-agent` to `MiniMaxTTS(voiceId)` / locale yet.
 - ~~`Waveform` SVG renders with fixed `width={640}` attribute.~~ Fluid `width="100%"` + `viewBox` landed 2026-04-20 (responsive Phase 1).
 - ~~Dock minimum width ≈ 400px. Overflows iPhone SE (320).~~ VoiceSelector collapses to 36×36 ink-dot at `max-[480px]` 2026-04-20 (responsive Phase 2).
@@ -15,6 +16,7 @@
 - ~~`src/hooks/use-mobile.tsx` contains no JSX; rename to `.ts`.~~ Hook removed from tree entirely 2026-04-20 (wasn't referenced).
 - ~~`src/features/visualizer-lab/components/AgentShaderVisualizer/` — hollow feature nesting.~~ Flattened to `src/components/AgentShaderVisualizer/` 2026-04-20.
 - `src/features/conversation/lib/agora-config.ts` contains a single `DEFAULT_AGENT_UID = 123456` constant. Could fold into `types.ts` or a shared constants module.
+- `--foreground-subtle` (#a7a7ac on #fafaf7) lands at 2.1:1 contrast — below WCAG AA 4.5:1 for text. Blocks flipping `preview.ts`'s `a11y.test` from `'todo'` → `'error'` (fails ~36 stories today). Decide: retire the subtle level and collapse into `foreground-muted`, or formally restrict `foreground-subtle` to decorative / non-text uses. Either needs a sweep over current usages.
 
 ## Boundaries / validation
 

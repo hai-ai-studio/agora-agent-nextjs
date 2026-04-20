@@ -11,3 +11,4 @@ Also see:
 - [`docs/plans/tech-debt.md`](./docs/plans/tech-debt.md) — known debt
 - [`docs/guides/GUIDE.md`](./docs/guides/GUIDE.md) — step-by-step build guide
 - [`docs/guides/TEXT_STREAMING_GUIDE.md`](./docs/guides/TEXT_STREAMING_GUIDE.md) — transcript deep-dive
+- [`docs/guides/CONVO_UI.md`](./docs/guides/CONVO_UI.md) — convo-ui component library spec

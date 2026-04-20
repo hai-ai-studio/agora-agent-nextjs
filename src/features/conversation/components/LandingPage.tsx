@@ -6,8 +6,8 @@ import { MessageCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
+import { Ambient, BrandMark, ErrorToast } from '@/components/convo-ui';
 import { useAgoraSession } from '@/features/conversation/hooks/useAgoraSession';
-import { Ambient } from './Ambient';
 import { ADA_AGENT_NAME } from './aria-state';
 
 // Dynamically import the ConversationShell with ssr disabled.
@@ -70,13 +70,10 @@ export default function LandingPage() {
     return (
       <>
         {agentJoinError && (
-          <div
-            role="alert"
-            className="fixed left-1/2 top-16 z-10 max-w-[min(90vw,28rem)] -translate-x-1/2 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3.5 py-2.5 text-center text-xs text-[#7f1d1d] shadow-[0_8px_24px_rgba(0,0,0,0.08)] dark:border-[rgba(239,68,68,0.35)] dark:bg-[rgba(239,68,68,0.12)] dark:text-[#fca5a5] dark:shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
-          >
+          <ErrorToast>
             Failed to connect with AI agent. The conversation may not work as
             expected.
-          </div>
+          </ErrorToast>
         )}
         <Suspense fallback={<LoadingSkeleton />}>
           <ErrorBoundary>
@@ -106,49 +103,27 @@ export default function LandingPage() {
       <Ambient state="idle" />
 
       <header className="relative z-20 flex shrink-0 items-center justify-between px-6 py-3.5 max-lg:px-4 max-lg:py-3">
-        <div className="flex items-center gap-2.5 text-ink">
-          <div className="flex size-8 items-center justify-center rounded-full bg-ink text-white">
-            <svg
-              viewBox="0 0 24 24"
-              width="18"
-              height="18"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="3" />
-              <circle cx="12" cy="12" r="7" opacity="0.5" />
-              <circle cx="12" cy="12" r="11" opacity="0.2" />
-            </svg>
-          </div>
-          <span className="font-serif text-2xl italic tracking-[-0.01em] max-[360px]:text-lg">
-            {ADA_AGENT_NAME}
-            <span className="text-ink-4"> · </span>
-            <span className="text-ink-3">Agora</span>
-          </span>
-        </div>
+        <BrandMark agentName={ADA_AGENT_NAME} />
       </header>
 
       <main className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6">
-        <h1 className="text-center font-serif text-[clamp(40px,6vw,64px)] italic font-normal leading-none tracking-[-0.02em] text-ink">
+        <h1 className="text-center font-display text-[clamp(40px,6vw,64px)] italic font-normal leading-none tracking-[-0.02em] text-foreground">
           Say hi to {ADA_AGENT_NAME}.
         </h1>
-        <p className="max-w-md text-center font-sans text-sm text-ink-3">
+        <p className="max-w-md text-center font-ui text-sm text-muted-foreground">
           A voice-first demo of Agora&apos;s Conversational AI Engine. Tap start
           and speak naturally &mdash; the agent listens, thinks, and replies in
           real time.
         </p>
 
         {showConversation && (!agoraData || !rtmClient) ? (
-          <p className="max-w-md text-center font-sans text-sm text-ink-3">
+          <p className="max-w-md text-center font-ui text-sm text-muted-foreground">
             Failed to load conversation data.
           </p>
         ) : (
           <button
             type="button"
-            className="mt-1 inline-flex h-11 cursor-pointer items-center gap-2 rounded-full border-none bg-ink px-6 font-sans text-sm font-medium tracking-[-0.01em] text-white transition-colors duration-150 hover:bg-ink-2 disabled:cursor-default disabled:opacity-70"
+            className="mt-1 inline-flex h-11 cursor-pointer items-center gap-2 rounded-full border-none bg-foreground px-6 font-ui text-sm font-medium tracking-[-0.01em] text-accent-foreground transition-colors duration-150 hover:bg-foreground/90 disabled:cursor-default disabled:opacity-70"
             onClick={startConversation}
             disabled={isLoading}
             aria-label={
@@ -181,13 +156,13 @@ export default function LandingPage() {
         )}
 
         {error && (
-          <p className="font-mono text-xs tracking-[-0.01em] text-pill-error">
+          <p className="font-mono text-xs tracking-[-0.01em] text-state-error">
             {error}
           </p>
         )}
       </main>
 
-      <footer className="relative z-20 flex items-center gap-2 px-6 pb-5 pt-3.5 font-mono text-[11px] uppercase tracking-widest text-ink-4">
+      <footer className="relative z-20 flex items-center gap-2 px-6 pb-5 pt-3.5 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
         <span>Powered by</span>
         <a
           href="https://agora.io/en/"

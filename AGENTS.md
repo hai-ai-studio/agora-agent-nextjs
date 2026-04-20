@@ -72,9 +72,17 @@ The main conversation UI is the editorial "Aria" skin under `src/features/conver
 - **Dark mode**: tokens flip in the root `@media (prefers-color-scheme: dark)` block. `darkMode: "media"` in `tailwind.config.ts` so `dark:` utilities track OS preference. Non-token dark visuals (e.g. ambient blob gradients) read `useSyncExternalStore(matchMedia)` in the component.
 - **Reduced motion**: `motion/react` honors `useReducedMotion()` automatically — prefer motion components for decoration so this works without extra CSS.
 
-Fonts come from `next/font/google` (Inter Tight, Instrument Serif, JetBrains Mono) wired in `src/app/layout.tsx`.
+Fonts come from `next/font/google` (Inter Tight, Instrument Serif, JetBrains Mono) wired in `src/app/layout.tsx`. The Voice Agent DS additionally loads Geist + Geist Mono on top, exposed as the `font-geist` / `font-geist-mono` utilities — used only by components from the `convo-ui` package and the `/design` catalog.
 
 The shader visualizer (`src/components/AgentShaderVisualizer/`) stays in the codebase but is only rendered at `/lab/visualizer`. It is not used by the main conversation flow.
+
+### Voice Agent Design System (coexists with Aria)
+
+A second design language lives in-tree at `src/components/convo-ui/` with its own token set (`--voice-a/b/c`, `--paper-0..7`, `--dark-0..4`, `--ok/warn/err/info`, `--font-geist`). Rendered in catalog form at `/design`. Future extraction to a standalone npm package or a shadcn registry stays open — not today's scope.
+
+**Storybook 10** lives at the repo root (`.storybook/`). Every component has a co-located `*.stories.tsx` file under `src/components/convo-ui/`. Run `pnpm storybook` for the dev server; `pnpm build-storybook` produces a static export. `@storybook/addon-a11y` runs axe-core on each story; `@storybook/addon-themes` provides a Light / Dark toggle via the `dark:` class.
+
+Rule: **new feature UI reaches for `convo-ui` primitives; the existing conversation feature stays on Aria** until a separate migration plan opens. See `docs/decisions/0003-voice-design-system.md`.
 
 ## Architecture layers
 
@@ -85,6 +93,7 @@ The shader visualizer (`src/components/AgentShaderVisualizer/`) stays in the cod
 | UI components | `agora-agent-uikit` | Type exports (`AgentVisualizerState`, `IMessageListItem`) consumed by helpers in `src/features/conversation/lib/`. Its runtime components are no longer rendered in the main flow. |
 | View layer | `src/features/conversation/components/` | Ambient, Persona, Waveform, Transcript, Controls, VoiceSelector, MicPicker + aria-state |
 | Visualizer (lab) | `src/components/AgentShaderVisualizer/` | WebGL shader visualizer — `/lab/visualizer` only |
+| Design system | `src/components/convo-ui/` | Voice Agent DS primitives (20 components + `useTypewriter` hook) — rendered at `/design` |
 | Server SDK | `agora-agent-server-sdk` | Builder pattern — `AgoraClient` → `Agent` → `session.start()` |
 | Messaging | `agora-rtm` | RTM transport for transcripts |
 
@@ -108,6 +117,8 @@ Tailwind must scan uikit classes: `./node_modules/agora-agent-uikit/dist/**/*.{j
 | `src/features/conversation/server/invite-agent-config.ts` | `ADA_PROMPT`, `GREETING`, `AGENT_UID` — edit for agent persona |
 | `src/components/AgentShaderVisualizer/` | WebGL shader + FFT hook + palette reader |
 | `src/app/lab/visualizer/page.tsx` | Standalone playground for tuning the shader visualizer |
+| `src/app/design/page.tsx` | Voice Agent DS catalog — renders all 18 DS primitives + composition |
+| `src/components/convo-ui/` | Voice Agent DS primitives (canvas + DOM, Tailwind-first) — in-tree, rendered at `/design` |
 | `src/app/api/invite-agent/route.ts` | Starts AI agent — edit for VAD, model, voice (prompt lives in the config file) |
 | `src/app/api/generate-agora-token/route.ts` | Issues RTC+RTM token for the browser user |
 | `src/app/api/stop-conversation/route.ts` | Stops the agent |

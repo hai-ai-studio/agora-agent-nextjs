@@ -2,14 +2,17 @@
 
 import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { ADA_AGENT_NAME } from './aria-state';
+
+// Scrollable streaming transcript — history entries fade in, then a live entry shows
+// the in-progress turn with a blinking caret. Auto-scrolls to the tail on every append.
+// Pure presentation: the consumer owns the history list and the active turn text.
 
 export type TranscriptSpeaker = 'user' | 'agent';
 
 export interface TranscriptEntry {
   speaker: TranscriptSpeaker;
   text: string;
-  // Stable key for React — use the upstream turn_id when available.
+  /** Stable key for React — use the upstream turn id when available. */
   key: string;
 }
 
@@ -17,22 +20,32 @@ export interface TranscriptProps {
   entries: TranscriptEntry[];
   activeText: string;
   activeSpeaker: TranscriptSpeaker;
+  /** Label shown above agent turns. Default: `Agent`. */
   agentName?: string;
+  /** Label shown above user turns. Default: `You`. */
+  userName?: string;
+  /** Text rendered when no entries and no active turn exists. */
+  emptyMessage?: string;
 }
 
-function labelFor(speaker: TranscriptSpeaker, agentName: string): string {
-  return speaker === 'user' ? 'You' : agentName;
+function labelFor(
+  speaker: TranscriptSpeaker,
+  agentName: string,
+  userName: string,
+): string {
+  return speaker === 'user' ? userName : agentName;
 }
 
 export function Transcript({
   entries,
   activeText,
   activeSpeaker,
-  agentName = ADA_AGENT_NAME,
+  agentName = 'Agent',
+  userName = 'You',
+  emptyMessage = 'Transcript will appear here once you start talking.',
 }: TranscriptProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Follow the tail as new entries or live characters arrive.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -47,7 +60,7 @@ export function Transcript({
       role="log"
       aria-live="polite"
       aria-label="Conversation transcript"
-      className="flex flex-1 flex-col gap-4 overflow-y-auto px-1 pb-2 pt-1 [scrollbar-color:var(--line-2)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-line-2"
+      className="flex flex-1 flex-col gap-4 overflow-y-auto px-1 pb-2 pt-1 [scrollbar-color:var(--border)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-border"
     >
       <AnimatePresence initial={false}>
         {entries.map((e) => (
@@ -59,12 +72,12 @@ export function Transcript({
             transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
             className="flex flex-col gap-1.5"
           >
-            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-ink-4">
-              {labelFor(e.speaker, agentName)}
+            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              {labelFor(e.speaker, agentName, userName)}
             </div>
             <div
               className={`text-sm leading-normal [text-wrap:pretty] ${
-                e.speaker === 'user' ? 'italic text-ink-3' : 'text-ink'
+                e.speaker === 'user' ? 'italic text-muted-foreground' : 'text-foreground'
               }`}
             >
               {e.text}
@@ -79,20 +92,21 @@ export function Transcript({
             transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
             className="flex flex-col gap-1.5"
           >
-            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-ink-4">
-              {labelFor(activeSpeaker, agentName)}
+            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              {labelFor(activeSpeaker, agentName, userName)}
               <motion.span
-                className="text-[9px] tracking-wider text-pill-listen"
+                className="text-[9px] tracking-wider text-success"
                 animate={{ opacity: [1, 0.35, 1] }}
                 transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
+                aria-hidden="true"
               >
                 ● live
               </motion.span>
             </div>
-            <div className="text-sm leading-normal text-ink [text-wrap:pretty]">
+            <div className="text-sm leading-normal text-foreground [text-wrap:pretty]">
               {activeText}
               <motion.span
-                className="ml-0.5 inline-block text-ink"
+                className="ml-0.5 inline-block text-foreground"
                 animate={{ opacity: [1, 1, 0, 0] }}
                 transition={{ duration: 0.9, times: [0, 0.5, 0.5, 1], repeat: Infinity, ease: 'linear' }}
               >
@@ -103,10 +117,12 @@ export function Transcript({
         )}
       </AnimatePresence>
       {isEmpty && (
-        <div className="mt-10 text-center font-serif text-xs italic text-ink-4">
-          Transcript will appear here once you start talking.
+        <div className="mt-10 text-center font-display text-xs italic text-muted-foreground">
+          {emptyMessage}
         </div>
       )}
     </div>
   );
 }
+
+export default Transcript;

@@ -23,10 +23,15 @@ import type { ConversationComponentProps } from '@/features/conversation/types';
 import { useStrictModeReady } from '@/features/conversation/hooks/useStrictModeReady';
 import { useAgoraVoiceAI } from '@/features/conversation/hooks/useAgoraVoiceAI';
 import { useTokenRefresh } from '@/features/conversation/hooks/useTokenRefresh';
-import { Ambient } from './Ambient';
-import { Persona } from './Persona';
+import {
+  Ambient,
+  BrandMark,
+  ConnectionStatus,
+  Persona,
+  Transcript,
+  type TranscriptEntry,
+} from '@/components/convo-ui';
 import { Waveform } from './Waveform';
-import { Transcript, type TranscriptEntry } from './Transcript';
 import { Controls } from './Controls';
 import { ADA_AGENT_NAME, ARIA_HINT, mapToAriaState, type AriaState } from './aria-state';
 
@@ -210,24 +215,34 @@ export default function ConversationShell({
   const stageGridClass = isTranscriptVisible
     ? 'grid-cols-[1fr_20rem] gap-6 max-lg:gap-4 max-md:grid-cols-[1fr] max-md:grid-rows-[1fr] max-md:gap-0'
     : 'grid-cols-[1fr_0px] gap-0 max-md:grid-cols-[1fr] max-md:grid-rows-[1fr]';
-  const connectedLabel = connectionState === 'CONNECTED' ? 'Connected' : 'Connecting';
+  // Collapse Agora's DISCONNECTED | CONNECTING | CONNECTED | DISCONNECTING | RECONNECTING
+  // into the ConnectionStatus enum. DISCONNECTING tracks back to 'connecting' since the
+  // user's intent there is still "we're mid-flow" rather than a hard error.
+  const connectionStatus =
+    connectionState === 'CONNECTED'
+      ? 'connected'
+      : connectionState === 'RECONNECTING'
+        ? 'reconnecting'
+        : connectionState === 'DISCONNECTED'
+          ? 'error'
+          : 'connecting';
 
   // Transcript card body — shared between the desktop side panel and the mobile bottom sheet
   // so the Transcript component, header, and close affordance stay in one place.
   const transcriptCardBody = (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="mb-3 flex items-center justify-between border-b border-line px-1 pb-3.5">
-        <div className="font-serif text-xl italic tracking-[-0.01em]">
+      <div className="mb-3 flex items-center justify-between border-b border-border px-1 pb-3.5">
+        <div className="font-display text-xl italic tracking-[-0.01em]">
           Transcript
         </div>
         <div className="flex items-center gap-2.5">
-          <div className="font-mono text-xs text-ink-3">
+          <div className="font-mono text-xs text-muted-foreground">
             Live · {transcriptEntries.length} turn
             {transcriptEntries.length === 1 ? '' : 's'}
           </div>
           <button
             type="button"
-            className="flex size-6 cursor-pointer items-center justify-center rounded-full border-none bg-transparent text-ink-3 transition-colors duration-150 hover:bg-black/5 hover:text-ink"
+            className="flex size-6 cursor-pointer items-center justify-center rounded-full border-none bg-transparent text-muted-foreground transition-colors duration-150 hover:bg-black/5 hover:text-foreground"
             onClick={() => setIsTranscriptVisible(false)}
             aria-label="Hide transcript"
             title="Hide transcript"
@@ -268,54 +283,19 @@ export default function ConversationShell({
       <Ambient state={ariaState} />
 
       <header className="relative z-20 flex shrink-0 items-center justify-between px-6 py-3.5 max-lg:px-4 max-lg:py-3">
-        <div className="flex items-center gap-2.5 text-ink">
-          <div className="flex size-8 items-center justify-center rounded-full bg-ink text-white">
-            <svg
-              viewBox="0 0 24 24"
-              width="18"
-              height="18"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="3" />
-              <circle cx="12" cy="12" r="7" opacity="0.5" />
-              <circle cx="12" cy="12" r="11" opacity="0.2" />
-            </svg>
-          </div>
-          <span className="font-serif text-2xl italic tracking-[-0.01em] max-[360px]:text-lg">
-            {ADA_AGENT_NAME}
-            <span className="text-ink-4"> · </span>
-            <span className="text-ink-3">Agora</span>
-          </span>
-        </div>
-
-        <div className="flex gap-5 font-mono text-xs tracking-[-0.01em] text-ink-3">
-          <span className="inline-flex items-center gap-2">
-            <motion.span
-              className="size-2 rounded-full bg-[#16a34a] shadow-[0_0_0_3px_rgba(22,163,74,0.15)]"
-              animate={{ opacity: [1, 0.5, 1] }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            />
-            {connectedLabel}
-          </span>
-          <span className="inline-flex items-center gap-2 text-ink-4 max-md:hidden">
-            End-to-end encrypted
-          </span>
-        </div>
+        <BrandMark agentName={ADA_AGENT_NAME} />
+        <ConnectionStatus status={connectionStatus} />
       </header>
 
       <main
         className={`relative z-10 grid min-h-0 items-stretch px-6 transition-[grid-template-columns,grid-template-rows,gap] duration-300 ease-aria-out max-lg:px-4 ${stageGridClass}`}
       >
         <section className="flex min-h-0 flex-col items-center justify-center gap-[clamp(16px,3vh,32px)] overflow-auto px-0 py-2 pb-4">
-          <Persona state={ariaState} hint={ARIA_HINT[ariaState]} />
+          <Persona state={ariaState} name={ADA_AGENT_NAME} hint={ARIA_HINT[ariaState]} />
 
-          <div className="w-full max-w-3xl overflow-hidden rounded-3xl border border-line bg-white/40 px-6 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.02),_0_20px_50px_rgba(0,0,0,0.05)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/40 max-lg:px-5 max-lg:py-3 max-sm:rounded-2xl max-sm:px-4 max-sm:py-2.5 2xl:max-w-4xl">
+          <div className="w-full max-w-3xl overflow-hidden rounded-3xl border border-border bg-surface/40 px-6 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.02),_0_20px_50px_rgba(0,0,0,0.05)] backdrop-blur-xl supports-[backdrop-filter]:bg-surface/40 max-lg:px-5 max-lg:py-3 max-sm:rounded-2xl max-sm:px-4 max-sm:py-2.5 2xl:max-w-4xl">
             <div className="flex items-center gap-4">
-              <div className="w-11 shrink-0 font-serif text-base italic text-ink-3">
+              <div className="w-11 shrink-0 font-display text-base italic text-muted-foreground">
                 {ADA_AGENT_NAME}
               </div>
               <Waveform
@@ -325,9 +305,9 @@ export default function ConversationShell({
                 audioTrack={agentMediaTrack}
               />
             </div>
-            <div className="my-2 h-px bg-line max-sm:my-1" />
+            <div className="my-2 h-px bg-border max-sm:my-1" />
             <div className="flex items-center gap-4">
-              <div className="w-11 shrink-0 font-serif text-base italic text-ink-3">
+              <div className="w-11 shrink-0 font-display text-base italic text-muted-foreground">
                 You
               </div>
               <Waveform
@@ -356,7 +336,7 @@ export default function ConversationShell({
             isTranscriptVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
           }`}
         >
-          <div className="my-1 mb-3 flex h-full min-h-0 w-80 flex-col rounded-2xl border border-line bg-white/55 p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02),_0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/55">
+          <div className="my-1 mb-3 flex h-full min-h-0 w-80 flex-col rounded-2xl border border-border bg-surface/55 p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02),_0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-xl supports-[backdrop-filter]:bg-surface/55">
             {transcriptCardBody}
           </div>
         </aside>
@@ -384,7 +364,7 @@ export default function ConversationShell({
             aria-label="Conversation transcript"
           >
             <motion.div
-              className="flex h-[75vh] max-h-[35rem] w-full flex-col rounded-t-3xl border border-line bg-white/95 p-4 pb-6 shadow-[0_-12px_60px_rgba(0,0,0,0.18)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/95"
+              className="flex h-[75vh] max-h-[35rem] w-full flex-col rounded-t-3xl border border-border bg-surface/95 p-4 pb-6 shadow-[0_-12px_60px_rgba(0,0,0,0.18)] backdrop-blur-xl supports-[backdrop-filter]:bg-surface/95"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
@@ -392,7 +372,7 @@ export default function ConversationShell({
             >
               {/* Grab handle — pure affordance, no drag-to-dismiss. Users close via backdrop
                   tap, the X in the header, or the transcript toggle in the dock. */}
-              <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-line-2" aria-hidden="true" />
+              <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-border" aria-hidden="true" />
               {transcriptCardBody}
             </motion.div>
           </motion.div>

@@ -1,25 +1,29 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter_Tight, Instrument_Serif, JetBrains_Mono } from 'next/font/google';
+import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import './globals.css';
 
-// Aria typography: sans body, italic serif display, mono meta. Weights mirror the reference HTML.
-const interTight = Inter_Tight({
+// Three type families — one sans (UI), one display (italic serif accents), one mono.
+// The next/font variable uses a family-specific name (e.g. `--font-geist-sans`),
+// NOT the Tailwind utility name. Utility names are mapped in globals.css's @theme:
+// `--font-ui: var(--font-geist-sans), …`. If the next/font variable and the utility
+// name collided, the @theme alias would self-reference — CSS would drop the declaration.
+const geist = Geist({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-sans',
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-geist-sans',
   display: 'swap',
 });
 const instrumentSerif = Instrument_Serif({
   subsets: ['latin'],
   weight: ['400'],
   style: ['normal', 'italic'],
-  variable: '--font-serif',
+  variable: '--font-instrument-serif',
   display: 'swap',
 });
-const jetBrainsMono = JetBrains_Mono({
+const geistMono = Geist_Mono({
   subsets: ['latin'],
   weight: ['400', '500'],
-  variable: '--font-mono',
+  variable: '--font-geist-mono-face',
   display: 'swap',
 });
 
@@ -41,16 +45,8 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: '/apple-touch-icon.png' }],
     other: [
-      {
-        url: '/android-chrome-192x192.png',
-        sizes: '192x192',
-        type: 'image/png',
-      },
-      {
-        url: '/android-chrome-512x512.png',
-        sizes: '512x512',
-        type: 'image/png',
-      },
+      { url: '/android-chrome-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/android-chrome-512x512.png', sizes: '512x512', type: 'image/png' },
     ],
   },
 };
@@ -63,7 +59,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${interTight.variable} ${instrumentSerif.variable} ${jetBrainsMono.variable}`}
+      className={`${geist.variable} ${instrumentSerif.variable} ${geistMono.variable}`}
     >
       <body suppressHydrationWarning={true}>{children}</body>
     </html>

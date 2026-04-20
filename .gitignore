@@ -48,6 +48,10 @@ web_modules/
 # TypeScript cache
 *.tsbuildinfo
 
+# Storybook build output
+storybook-static
+packages/*/storybook-static
+
 # Optional npm cache directory
 .npm
 
