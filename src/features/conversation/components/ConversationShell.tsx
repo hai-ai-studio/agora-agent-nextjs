@@ -148,8 +148,9 @@ export default function ConversationShell({
   // Raw MediaStreamTracks for the waveform's real-time FFT tap. Memoized on the upstream
   // Agora track reference so useAudioFFT doesn't rebuild its AnalyserNode on every render
   // (getMediaStreamTrack() can return a fresh object each call).
-  const agentRemoteUser = remoteUsers.find(
-    (user) => user.uid.toString() === agentUID,
+  const agentRemoteUser = useMemo(
+    () => remoteUsers.find((user) => user.uid.toString() === agentUID),
+    [remoteUsers, agentUID],
   );
   const agentMediaTrack = useMemo(
     () => agentRemoteUser?.audioTrack?.getMediaStreamTrack() ?? null,

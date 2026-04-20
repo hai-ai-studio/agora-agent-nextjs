@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 
 // Agent identity card — avatar with pulsing rings, italic serif name, optional hint line,
@@ -102,6 +102,10 @@ function ringAnimation(state: PersonaState, ringIndex: 1 | 2 | 3, reduceMotion: 
 
 function AgentAvatar({ state, initial }: { state: PersonaState; initial: string }) {
   const reduceMotion = useReducedMotion() ?? false;
+  // Per-instance gradient id — without this, two Personas on one page ship the
+  // same `id="persona-avatar-grad"` and the browser's reference resolution
+  // becomes undefined. `useId()` guarantees a unique, SSR-stable value.
+  const gradId = `persona-avatar-grad-${useId()}`;
   const ringSizes: Array<{ ring: 1 | 2 | 3; size: number; baseOpacity: number }> = [
     { ring: 3, size: 68, baseOpacity: 0.4 },
     { ring: 2, size: 58, baseOpacity: 0.7 },
@@ -136,12 +140,12 @@ function AgentAvatar({ state, initial }: { state: PersonaState; initial: string 
           className="[@media(max-height:640px)]:size-5 max-[480px]:size-5"
         >
           <defs>
-            <linearGradient id="persona-avatar-grad" x1="0" y1="0" x2="1" y2="1">
+            <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stopColor="#1a1a1a" />
               <stop offset="100%" stopColor="#3a3a3a" />
             </linearGradient>
           </defs>
-          <circle cx="20" cy="20" r="18" fill="url(#persona-avatar-grad)" />
+          <circle cx="20" cy="20" r="18" fill={`url(#${gradId})`} />
           <text
             x="20"
             y="26"

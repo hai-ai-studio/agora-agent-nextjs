@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, useReducedMotion } from 'motion/react';
-import { useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 // Drifting radial blobs + SVG grain overlay. Pure decoration — no layout, no interaction.
 // The `state` prop tints one of three blobs per state; unspecified states fall through to
@@ -109,9 +109,30 @@ export interface AmbientProps {
 export function Ambient({ state, dark }: AmbientProps) {
   const isDark = useIsDark(dark);
   const reduceMotion = useReducedMotion();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(true);
+
+  // Pause the blob drift animations when the Ambient container scrolls off-screen
+  // or the tab is backgrounded. Framer Motion only animates when `animate` is
+  // provided, so gating `animate` on `visible` stops the RAF loop entirely
+  // rather than continuing to tween invisible nodes.
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => setVisible(entry?.isIntersecting ?? true),
+      { threshold: 0 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
+    <div
+      ref={rootRef}
+      className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+      aria-hidden="true"
+    >
       {BLOB_CONFIG.map((cfg, i) => {
         const spec = specFor(state, i, isDark);
         const style: React.CSSProperties = {
@@ -135,7 +156,7 @@ export function Ambient({ state, dark }: AmbientProps) {
             key={i}
             style={style}
             animate={
-              reduceMotion
+              reduceMotion || !visible
                 ? undefined
                 : { x: [...cfg.driftX], y: [...cfg.driftY] }
             }
