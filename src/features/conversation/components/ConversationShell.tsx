@@ -14,8 +14,8 @@ import {
 } from 'agora-rtc-react';
 import { DEFAULT_AGENT_UID } from '@/features/conversation/lib/agora-config';
 import {
-  getCurrentInProgressMessage,
   getMessageList,
+  getPriorityInProgressMessage,
   normalizeTranscript,
 } from '@/features/conversation/lib/transcript';
 import { mapAgentVisualizerState } from '@/features/conversation/lib/visualizer-state';
@@ -35,7 +35,7 @@ import {
 } from '@/components/convo-ui';
 import { ConversationVoice } from './ConversationVoice';
 import { Controls } from './Controls';
-import { ADA_AGENT_NAME, VIEW_HINT, mapToViewState, type ViewState } from '@/features/conversation/lib/view-state';
+import { ADA_AGENT_NAME, mapToViewState, type ViewState } from '@/features/conversation/lib/view-state';
 
 export default function ConversationShell({
   agoraData,
@@ -109,10 +109,13 @@ export default function ConversationShell({
   // if the agent's first turn is cut off, messageList stays empty and ConvoTextStream never auto-opens.
   const messageList = useMemo(() => getMessageList(transcript), [transcript]);
 
-  // ConvoTextStream renders the live partial turn separately from the history list.
+  // Live partial turn — rendered under the hero orb and inside the side
+  // panel's typing caret. Prefers the user's UID so barge-in flips the
+  // displayed speech to the interrupter instead of latching onto the
+  // agent's already-playing turn.
   const currentInProgressMessage = useMemo(
-    () => getCurrentInProgressMessage(transcript),
-    [transcript],
+    () => getPriorityInProgressMessage(transcript, String(client.uid)),
+    [transcript, client.uid],
   );
 
   // Publish local mic once the track exists; usePublish waits for RTC connection.
@@ -278,13 +281,21 @@ export default function ConversationShell({
       <main
         className={`relative z-10 grid min-h-0 items-stretch px-6 transition-[grid-template-columns,grid-template-rows,gap] duration-300 ease-voice-out max-lg:px-4 ${stageGridClass}`}
       >
-        <section className="flex min-h-0 flex-col items-center justify-center gap-[clamp(16px,3vh,32px)] overflow-auto px-0 py-2 pb-4">
-          <Persona state={viewState} name={ADA_AGENT_NAME} hint={VIEW_HINT[viewState]} />
+        {/* justify-start on mobile so Persona + orb sit higher in the viewport
+            (not centered), matching the "don't cover the orb" request. Desktop
+            keeps justify-center for the hero composition. */}
+        <section className="flex min-h-0 flex-col items-center justify-center gap-[clamp(16px,3vh,32px)] overflow-auto px-0 py-2 pb-4 max-md:justify-start max-md:gap-4 max-md:pt-4">
+          {/* `hint` intentionally not passed — the activeSpeech line under the
+              orb now carries the "what's happening right now" signal, so
+              Persona stays tight at 2 lines (name + pill/timer). Keeps the
+              persona card from visually competing with the orb. */}
+          <Persona state={viewState} name={ADA_AGENT_NAME} />
 
           <ConversationVoice
             state={viewState}
             agentTrack={agentMediaTrack}
             userTrack={userMediaTrack}
+            activeSpeech={activeTranscript}
           />
 
           {/* Hidden RemoteUser mounts keep agent audio subscribed — critical, don't remove. */}

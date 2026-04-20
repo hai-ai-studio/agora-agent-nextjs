@@ -80,3 +80,22 @@ export function getCurrentInProgressMessage(
   const item = transcript.find((entry) => entry.status === TurnStatus.IN_PROGRESS);
   return item ? toMessageListItem(item) : null;
 }
+
+// Returns the in-progress turn with priority — callers can bias toward a
+// specific uid (typically the local user). During barge-in both sides may
+// briefly be in-progress at once: without a tiebreaker, `find()` returns
+// whichever entry arrived first, which is almost always the agent's
+// already-playing turn. Preferring the user matches the product intent —
+// the user's interrupt is the fresh signal; the agent's stale mid-interrupted
+// speech shouldn't keep the subtitle/hero caption latched to it.
+export function getPriorityInProgressMessage(
+  transcript: TranscriptHelperItem<Partial<UserTranscription | AgentTranscription>>[],
+  preferUid: string,
+) {
+  const inProgress = transcript.filter(
+    (entry) => entry.status === TurnStatus.IN_PROGRESS,
+  );
+  if (inProgress.length === 0) return null;
+  const preferred = inProgress.find((entry) => String(entry.uid) === preferUid);
+  return toMessageListItem(preferred ?? inProgress[0]);
+}

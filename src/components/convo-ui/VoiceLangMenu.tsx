@@ -148,8 +148,10 @@ interface VoiceMenuProps {
 
 // `disabled:text-muted-foreground` (not `disabled:opacity-50`) so disabled text stays
 // AA-compliant; opacity would dim the foreground below the 4.5:1 threshold.
+// `max-sm:py-1.5` — tighter vertical rhythm on phones where screen real estate is
+// precious; the whole menu column needs to fit above the dock without pushing off-screen.
 const OPT_BASE =
-  'flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-2 text-left font-ui text-xs text-foreground transition-colors duration-100 hover:bg-muted disabled:cursor-default disabled:text-muted-foreground disabled:hover:bg-transparent';
+  'flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-2 text-left font-ui text-xs text-foreground transition-colors duration-100 hover:bg-muted disabled:cursor-default disabled:text-muted-foreground disabled:hover:bg-transparent max-sm:py-1.5';
 
 function VoiceMenu({
   menuRef,
@@ -171,7 +173,7 @@ function VoiceMenu({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 4 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
-      className="absolute bottom-[calc(100%+12px)] left-0 z-10 w-64 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-surface/95 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.12)] backdrop-blur-xl supports-[backdrop-filter]:bg-surface/95 dark:bg-warm-7/90 dark:supports-[backdrop-filter]:bg-warm-7/80 max-sm:left-auto max-sm:right-0"
+      className="absolute bottom-[calc(100%+12px)] left-0 z-10 w-64 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-surface/95 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.12)] backdrop-blur-xl supports-[backdrop-filter]:bg-surface/95 dark:bg-warm-7/90 dark:supports-[backdrop-filter]:bg-warm-7/80 max-sm:left-auto max-sm:right-0 max-sm:max-h-[60vh] max-sm:overflow-y-auto"
     >
       <div className="px-2.5 pb-1.5 pt-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
         Voice
@@ -192,7 +194,10 @@ function VoiceMenu({
         >
           <div>
             <div className="text-sm font-medium">{v.name}</div>
-            <div className="mt-0.5 text-xs text-muted-foreground">{v.desc}</div>
+            {/* Description hidden on phones — it's the biggest row-height
+                contributor and the voice name alone is enough to disambiguate.
+                Desktop keeps it for richer context. */}
+            <div className="mt-0.5 text-xs text-muted-foreground max-sm:hidden">{v.desc}</div>
           </div>
           {v.id === voice && <span className="text-xs text-foreground">✓</span>}
           {v.disabled && <SoonBadge />}

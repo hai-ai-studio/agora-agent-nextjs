@@ -59,41 +59,47 @@ function StatusPill({ state }: { state: PersonaState }) {
   );
 }
 
-// Ring animation variants per state. Ring index (1|2|3) selects a progressively larger ring
-// so outer rings lag slightly behind inner rings during pulse, matching the original cascade.
+// Ring animation variants per state. Tuned for **subtlety** — Persona now
+// coexists with the VoiceOrb on the same stage, and the orb is the primary
+// voice-reactive element. The rings here are a quiet status accent, not a
+// centerpiece. Previous values had full 25% scale pulses + 0.5 opacity
+// borders; the new values keep the same vocabulary but at roughly a third
+// the intensity so the persona avatar reads as "alive, calm" rather than
+// "look at me".
 function ringAnimation(state: PersonaState, ringIndex: 1 | 2 | 3, reduceMotion: boolean) {
   if (reduceMotion) return { animate: undefined, transition: undefined, extraStyle: undefined };
   if (state === 'listening') {
     return {
-      animate: { scale: [1, 1.25], opacity: [1, 0] },
+      animate: { scale: [1, 1.08], opacity: [0.55, 0] },
       transition: {
-        duration: 1.4,
+        duration: 2.2,
         repeat: Infinity,
         ease: 'easeInOut' as const,
-        delay: (ringIndex - 1) * 0.15,
+        delay: (ringIndex - 1) * 0.2,
       },
-      extraStyle: { borderColor: 'rgba(22,163,74,0.5)' } as React.CSSProperties,
+      extraStyle: { borderColor: 'rgba(22,163,74,0.25)' } as React.CSSProperties,
     };
   }
   if (state === 'speaking') {
     return {
-      animate: { scale: [1, 1.25], opacity: [1, 0] },
+      animate: { scale: [1, 1.1], opacity: [0.6, 0] },
       transition: {
-        duration: 1.1,
+        duration: 1.8,
         repeat: Infinity,
         ease: 'easeInOut' as const,
-        delay: (ringIndex - 1) * 0.12,
+        delay: (ringIndex - 1) * 0.18,
       },
-      extraStyle: { borderColor: 'rgba(29,78,216,0.5)' } as React.CSSProperties,
+      extraStyle: { borderColor: 'rgba(29,78,216,0.28)' } as React.CSSProperties,
     };
   }
   if (state === 'thinking') {
     return {
+      // Slow rotate; no scale. Subtler than before.
       animate: { rotate: 360 },
-      transition: { duration: 2, repeat: Infinity, ease: 'linear' as const },
+      transition: { duration: 4, repeat: Infinity, ease: 'linear' as const },
       extraStyle: {
         borderStyle: 'dashed',
-        borderColor: 'rgba(180,83,9,0.35)',
+        borderColor: 'rgba(180,83,9,0.22)',
       } as React.CSSProperties,
     };
   }

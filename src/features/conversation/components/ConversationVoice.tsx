@@ -19,8 +19,15 @@ import type { ViewState } from '@/features/conversation/lib/view-state';
 //   - getTargets callback feeds the mic-strip BarsWave the same way
 // ConversationVoice itself only re-renders on semantic state changes.
 
-const NOISE_FLOOR = 0.18;
-const FLOOR_SCALE = 1 / (1 - NOISE_FLOOR);
+// Lower noise floor than the bar-wave path — the orb needs to react to quiet
+// speech to feel alive, and the single-orb visual can tolerate a bit more
+// ambient flutter than 48 individual bars can.
+const ORB_NOISE_FLOOR = 0.12;
+const ORB_FLOOR_SCALE = 1 / (1 - ORB_NOISE_FLOOR);
+// Mic-strip uses the same noise floor as the original bar-wave default — it's
+// visually a meter and benefits from the stricter gate.
+const MIC_NOISE_FLOOR = 0.18;
+const MIC_FLOOR_SCALE = 1 / (1 - MIC_NOISE_FLOOR);
 const MIC_BAR_COUNT = 14;
 
 export interface ConversationVoiceProps {
@@ -31,6 +38,16 @@ export interface ConversationVoiceProps {
   userTrack?: MediaStreamTrack | null;
   /** Orb diameter in px. Default 180. */
   orbSize?: number;
+  /**
+   * Currently-streaming speech to show under the mic strip. `text` is the
+   * partial transcript; `speaker` drives the small prefix label. Pass `null`
+   * or empty text to hide the line (a non-breaking space still holds the slot
+   * so layout doesn't jump). Caller is expected to prioritize user speech on
+   * barge-in — see `getPriorityInProgressMessage`.
+   */
+  activeSpeech?: { text: string; speaker: 'agent' | 'user' } | null;
+  /** Agent display name for the caption prefix. Default 'Ada'. */
+  agentName?: string;
 }
 
 // 8-state conversation enum → 5-state orb enum. `connecting`/`preparing` map
@@ -52,6 +69,8 @@ export function ConversationVoice({
   agentTrack = null,
   userTrack = null,
   orbSize = 180,
+  activeSpeech = null,
+  agentName = 'Ada',
 }: ConversationVoiceProps) {
   const agentBandsRef = useAudioFFT(agentTrack, { smoothing: 0.8 });
   const userBandsRef = useAudioFFT(userTrack, { smoothing: 0.8 });
@@ -61,8 +80,11 @@ export function ConversationVoice({
   // a ref + asymmetric attack/release smoothing so the orb reacts quickly to
   // onset but decays smoothly — same VU-meter feel as BarsWave's bars.
   const orbAmpRef = useRef(0);
-  const ATTACK = 0.35;
-  const RELEASE = 0.07;
+  // Snappier attack for more responsive voice feedback. Release stays slow
+  // so decays feel graceful. Compression is linear (not x²) — squaring was
+  // crushing normal-conversation amplitudes; linear maps them more visibly.
+  const ATTACK = 0.55;
+  const RELEASE = 0.08;
 
   const getOrbAmplitude = useCallback(() => {
     // Pick the side that's currently driving the orb. During speaking the
@@ -77,9 +99,10 @@ export function ConversationVoice({
     let target = 0;
     if (b) {
       const raw = Math.max(b.bass, b.mid, b.treble);
-      // Same gate + x² compression BarsWave uses; keeps amplitudes comparable.
-      const gated = Math.max(0, raw - NOISE_FLOOR) * FLOOR_SCALE;
-      target = Math.min(1, gated * gated * 1.8);
+      // Gate + gain. Gain 3.0 (was 1.8) — typical speech now reaches amp ~0.5
+      // instead of ~0.25, so the orb actually visibly responds to voice.
+      const gated = Math.max(0, raw - ORB_NOISE_FLOOR) * ORB_FLOOR_SCALE;
+      target = Math.min(1, gated * 3.0);
     }
     const prev = orbAmpRef.current;
     const rate = target > prev ? ATTACK : RELEASE;
@@ -103,7 +126,7 @@ export function ConversationVoice({
     // Same compression shape as BarsWave's default. For a compact strip we
     // skip the center envelope — the bars look better flat at this size.
     const raw = Math.max(b.bass, b.mid, b.treble);
-    const gated = Math.max(0, raw - NOISE_FLOOR) * FLOOR_SCALE;
+    const gated = Math.max(0, raw - MIC_NOISE_FLOOR) * MIC_FLOOR_SCALE;
     const amp = Math.min(1, gated * gated * 2.2);
     // Spread amplitude across bars with a tiny sparkle so neighbors decorrelate.
     const t = performance.now() / 1000;
@@ -120,6 +143,17 @@ export function ConversationVoice({
   // their mic is hot and ready to interrupt).
   const micVisible = state !== 'muted' && state !== 'error';
   const micProminent = state === 'listening' || state === 'idle';
+
+  // Live speech caption — single line under the mic strip. Only visible when
+  // something is streaming; keeps a fixed min-height so the orb above doesn't
+  // shift when speech toggles on/off. Prefix label distinguishes user (green)
+  // from agent (ink) so the reader knows at a glance who's speaking.
+  const speechText = activeSpeech?.text?.trim() ?? '';
+  const hasSpeech = speechText.length > 0;
+  const speechSpeaker = activeSpeech?.speaker ?? 'agent';
+  const speakerLabel = speechSpeaker === 'user' ? 'You' : agentName;
+  const speakerColor =
+    speechSpeaker === 'user' ? 'text-[#16a34a]' : 'text-foreground';
 
   return (
     <div className="flex flex-col items-center gap-5">
@@ -143,6 +177,21 @@ export function ConversationVoice({
           release={0.1}
           minHeight={2}
         />
+      </div>
+      <div
+        className={`min-h-[1.75rem] max-w-xl px-6 text-center transition-opacity duration-200 ${
+          hasSpeech ? 'opacity-100' : 'opacity-0'
+        }`}
+        aria-live="polite"
+      >
+        <span
+          className={`mr-2 font-mono text-[10px] uppercase tracking-widest ${speakerColor}`}
+        >
+          {speakerLabel}
+        </span>
+        <span className="font-display italic text-base leading-snug text-muted-foreground [text-wrap:balance]">
+          {speechText || '\u00A0'}
+        </span>
       </div>
     </div>
   );
