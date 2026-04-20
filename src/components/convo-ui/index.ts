@@ -13,6 +13,8 @@ export type { PersonaProps, PersonaState } from './Persona';
 // Waveforms
 export { BarsWave } from './BarsWave';
 export type { BarsWaveProps } from './BarsWave';
+export { spreadBandsToBarValues } from './spread-bands';
+export type { SpreadBandsOptions } from './spread-bands';
 export { LinearWave } from './LinearWave';
 export type { LinearWaveProps } from './LinearWave';
 export { CircleWave } from './CircleWave';
