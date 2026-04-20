@@ -94,14 +94,6 @@ export function Transcript({
           >
             <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               {labelFor(activeSpeaker, agentName, userName)}
-              <motion.span
-                className="text-[9px] tracking-wider text-success"
-                animate={{ opacity: [1, 0.35, 1] }}
-                transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
-                aria-hidden="true"
-              >
-                ● live
-              </motion.span>
             </div>
             <div className="text-sm leading-normal text-foreground [text-wrap:pretty]">
               {activeText}

@@ -50,8 +50,6 @@ export interface ConversationVoiceProps {
    * barge-in — see `getPriorityInProgressMessage`.
    */
   activeSpeech?: { text: string; speaker: 'agent' | 'user' } | null;
-  /** Agent display name for the caption prefix. Default 'Ada'. */
-  agentName?: string;
 }
 
 // 8-state conversation enum → 5-state orb enum. `connecting`/`preparing` map
@@ -74,7 +72,6 @@ export function ConversationVoice({
   userTrack = null,
   orbSize = 220,
   activeSpeech = null,
-  agentName = 'Ada',
 }: ConversationVoiceProps) {
   const agentBandsRef = useAudioFFT(agentTrack, { smoothing: 0.8 });
   const userBandsRef = useAudioFFT(userTrack, { smoothing: 0.8 });
@@ -205,10 +202,6 @@ export function ConversationVoice({
   const displayed = liveText.length > 0 ? activeSpeech : persistedSpeech;
   const speechText = displayed?.text ?? '';
   const hasSpeech = speechText.trim().length > 0;
-  const speechSpeaker = displayed?.speaker ?? 'agent';
-  const speakerLabel = speechSpeaker === 'user' ? 'You' : agentName;
-  const speakerColor =
-    speechSpeaker === 'user' ? 'text-[#16a34a]' : 'text-foreground';
 
   return (
     <div className="flex flex-col items-center gap-5">
@@ -239,14 +232,15 @@ export function ConversationVoice({
         }`}
         aria-live="polite"
       >
-        <span
-          className={`mr-2 font-mono text-[10px] uppercase tracking-widest ${speakerColor}`}
-        >
-          {speakerLabel}
-        </span>
         <span className="font-display italic text-lg leading-snug text-foreground [text-wrap:balance]">
           {speechText || '\u00A0'}
         </span>
+        {hasSpeech && (
+          <span
+            aria-hidden="true"
+            className="ml-1 inline-block h-[1em] w-[2px] translate-y-[0.1em] bg-voice-b animate-caret-blink"
+          />
+        )}
       </div>
     </div>
   );
