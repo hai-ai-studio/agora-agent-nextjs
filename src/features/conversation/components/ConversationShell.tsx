@@ -33,7 +33,7 @@ import {
 } from '@/components/convo-ui';
 import { Waveform } from './Waveform';
 import { Controls } from './Controls';
-import { ADA_AGENT_NAME, ARIA_HINT, mapToAriaState, type AriaState } from '@/features/conversation/lib/aria-state';
+import { ADA_AGENT_NAME, VIEW_HINT, mapToViewState, type ViewState } from '@/features/conversation/lib/view-state';
 
 export default function ConversationShell({
   agoraData,
@@ -136,15 +136,15 @@ export default function ConversationShell({
     [agentState, isAgentConnected, connectionState],
   );
 
-  // Collapse RTC transport + agent state + local flags into Aria's state enum. `agentState`
-  // is passed through (not just its derived visualizerState) so we can distinguish "agent in
-  // channel but hasn't spoken yet" from "agent is genuinely idle".
-  const ariaState: AriaState = useMemo(
-    () => mapToAriaState(visualizerState, agentState, !isEnabled),
+  // Collapse RTC transport + agent state + local flags into the 8-state view enum.
+  // `agentState` is passed through (not just its derived visualizerState) so we can
+  // distinguish "agent in channel but hasn't spoken yet" from "agent is genuinely idle".
+  const viewState: ViewState = useMemo(
+    () => mapToViewState(visualizerState, agentState, !isEnabled),
     [visualizerState, agentState, isEnabled],
   );
 
-  // Raw MediaStreamTracks for the Aria waveform's real-time FFT tap. Memoized on the upstream
+  // Raw MediaStreamTracks for the waveform's real-time FFT tap. Memoized on the upstream
   // Agora track reference so useAudioFFT doesn't rebuild its AnalyserNode on every render
   // (getMediaStreamTrack() can return a fresh object each call).
   const agentRemoteUser = remoteUsers.find(
@@ -280,7 +280,7 @@ export default function ConversationShell({
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
     >
-      <Ambient state={ariaState} />
+      <Ambient state={viewState} />
 
       <header className="relative z-20 flex shrink-0 items-center justify-between px-6 py-3.5 max-lg:px-4 max-lg:py-3">
         <BrandMark agentName={ADA_AGENT_NAME} />
@@ -288,10 +288,10 @@ export default function ConversationShell({
       </header>
 
       <main
-        className={`relative z-10 grid min-h-0 items-stretch px-6 transition-[grid-template-columns,grid-template-rows,gap] duration-300 ease-aria-out max-lg:px-4 ${stageGridClass}`}
+        className={`relative z-10 grid min-h-0 items-stretch px-6 transition-[grid-template-columns,grid-template-rows,gap] duration-300 ease-voice-out max-lg:px-4 ${stageGridClass}`}
       >
         <section className="flex min-h-0 flex-col items-center justify-center gap-[clamp(16px,3vh,32px)] overflow-auto px-0 py-2 pb-4">
-          <Persona state={ariaState} name={ADA_AGENT_NAME} hint={ARIA_HINT[ariaState]} />
+          <Persona state={viewState} name={ADA_AGENT_NAME} hint={VIEW_HINT[viewState]} />
 
           <div className="w-full max-w-3xl overflow-hidden rounded-3xl border border-border bg-surface/40 px-6 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.02),_0_20px_50px_rgba(0,0,0,0.05)] backdrop-blur-xl supports-[backdrop-filter]:bg-surface/40 max-lg:px-5 max-lg:py-3 max-sm:rounded-2xl max-sm:px-4 max-sm:py-2.5 2xl:max-w-4xl">
             <div className="flex items-center gap-4">
@@ -299,7 +299,7 @@ export default function ConversationShell({
                 {ADA_AGENT_NAME}
               </div>
               <Waveform
-                state={ariaState}
+                state={viewState}
                 variant="agent"
                 height={140}
                 audioTrack={agentMediaTrack}
@@ -311,7 +311,7 @@ export default function ConversationShell({
                 You
               </div>
               <Waveform
-                state={ariaState}
+                state={viewState}
                 variant="user"
                 height={140}
                 audioTrack={userMediaTrack}
@@ -332,7 +332,7 @@ export default function ConversationShell({
             the card fades in sync so the transition reads as one motion. */}
         <aside
           aria-hidden={!isTranscriptVisible}
-          className={`flex min-h-0 flex-col overflow-hidden transition-opacity duration-300 ease-aria-out max-md:hidden ${
+          className={`flex min-h-0 flex-col overflow-hidden transition-opacity duration-300 ease-voice-out max-md:hidden ${
             isTranscriptVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
           }`}
         >
@@ -380,7 +380,7 @@ export default function ConversationShell({
       </AnimatePresence>
 
       <footer
-        className={`relative z-20 flex shrink-0 justify-center pb-4 pt-3 transition-[padding] duration-300 ease-aria-out max-lg:pb-3.5 max-lg:pt-2 ${
+        className={`relative z-20 flex shrink-0 justify-center pb-4 pt-3 transition-[padding] duration-300 ease-voice-out max-lg:pb-3.5 max-lg:pt-2 ${
           isTranscriptVisible
             ? 'pl-6 pr-96 max-md:pr-6'
             : 'px-6'

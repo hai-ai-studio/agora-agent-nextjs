@@ -1,8 +1,8 @@
 import type { AgentState } from 'agora-agent-client-toolkit';
 import type { AgentVisualizerState } from 'agora-agent-uikit';
 
-// Aria's state enum. Collapses the richer agent lifecycle + local flags into the
-// visual states the Aria surfaces style around.
+// View-state enum. Collapses the richer agent lifecycle + local flags into the 8 visual
+// states the conversation UI styles around.
 //
 // `connecting` and `preparing` split what used to be lumped into `idle`:
 //   - `connecting`: RTC/RTM not yet established, or the agent hasn't joined the channel
@@ -13,7 +13,7 @@ import type { AgentVisualizerState } from 'agora-agent-uikit';
 // There is no `ended` state: the end-call button unmounts the conversation tree and
 // returns to the landing screen. Anything that would have rendered for "ended" (Call
 // ended pill, Start new call CTA) lives on the landing page instead.
-export type AriaState =
+export type ViewState =
   | 'connecting'
   | 'preparing'
   | 'idle'
@@ -23,15 +23,15 @@ export type AriaState =
   | 'muted'
   | 'error';
 
-// Map the AgoraAgent state + local mute/end-of-call flags to Aria's state enum.
+// Map the AgoraAgent state + local mute/end-of-call flags to the view-state enum.
 // Priority: disconnected (error) > connecting > preparing > muted > active states.
 // `preparing` wins over `muted` because the mute hint ("Ada can't hear you") is misleading
 // before Ada has said anything — nothing is listening yet regardless of mic state.
-export function mapToAriaState(
+export function mapToViewState(
   visualizerState: AgentVisualizerState,
   agentState: AgentState | null,
   isMuted: boolean,
-): AriaState {
+): ViewState {
   if (visualizerState === 'disconnected') return 'error';
   if (visualizerState === 'joining' || visualizerState === 'not-joined') {
     return 'connecting';
@@ -56,14 +56,13 @@ export function mapToAriaState(
   }
 }
 
-// Agent display name. The surrounding view layer is called "Aria" (design skin); the
-// agent itself is "Ada" — kept in one place so hint line, transcript labels, persona
-// card, and controls dock all read the same label.
+// Agent display name. Single source of truth for the label shown in hint copy,
+// transcript, persona card, and controls dock.
 export const ADA_AGENT_NAME = 'Ada';
 
-// Hint copy keyed on AriaState. Empty string = no hint (caller should render a fixed-height
+// Hint copy keyed on ViewState. Empty string = no hint (caller should render a fixed-height
 // placeholder to avoid layout jumps).
-export const ARIA_HINT: Record<AriaState, string> = {
+export const VIEW_HINT: Record<ViewState, string> = {
   connecting: `Connecting to ${ADA_AGENT_NAME}…`,
   preparing: `${ADA_AGENT_NAME} is about to say hi.`,
   idle: 'Say something whenever you\u2019re ready.',

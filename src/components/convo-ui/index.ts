@@ -57,16 +57,16 @@ export type {
 // Pickers
 export { VoiceCard } from './VoiceCard';
 export type { VoiceCardProps } from './VoiceCard';
-export { VoicePicker, VOICES } from './VoicePicker';
-export type { VoicePickerProps } from './VoicePicker';
+export { VoiceGallery, VOICES } from './VoiceGallery';
+export type { VoiceGalleryProps } from './VoiceGallery';
 export { LanguagePicker, LANGS } from './LanguagePicker';
 export type { LanguagePickerProps } from './LanguagePicker';
-export { VoiceSelector, DEFAULT_VOICES, DEFAULT_LANGS } from './VoiceSelector';
+export { VoiceLangMenu, DEFAULT_VOICES, DEFAULT_LANGS } from './VoiceLangMenu';
 export type {
-  VoiceSelectorProps,
-  VoiceSelectorVoice,
-  VoiceSelectorLang,
-} from './VoiceSelector';
+  VoiceLangMenuProps,
+  VoiceLangMenuVoice,
+  VoiceLangMenuLang,
+} from './VoiceLangMenu';
 export { BargeInIndicator } from './BargeInIndicator';
 export type { BargeInIndicatorProps } from './BargeInIndicator';
 
@@ -88,3 +88,5 @@ export type { AudioPlayerProps } from './AudioPlayer';
 
 // Hooks
 export { useTypewriter } from './hooks/useTypewriter';
+export { useTypewriterCycle } from './hooks/useTypewriterCycle';
+export type { UseTypewriterCycleOptions } from './hooks/useTypewriterCycle';

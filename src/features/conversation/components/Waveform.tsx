@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAudioFFT } from '@/features/conversation/hooks/useAudioFFT';
-import type { AriaState } from '@/features/conversation/lib/aria-state';
+import type { ViewState } from '@/features/conversation/lib/view-state';
 
 // useState initializer runs once at mount and is the sanctioned place for Math.random —
 // useRef's initializer runs every render, which React 19 flags as impure.
@@ -17,7 +17,7 @@ const BAR_COUNT = 48;
 type Variant = 'agent' | 'user';
 
 export interface WaveformProps {
-  state: AriaState;
+  state: ViewState;
   variant?: Variant;
   width?: number;
   height?: number;

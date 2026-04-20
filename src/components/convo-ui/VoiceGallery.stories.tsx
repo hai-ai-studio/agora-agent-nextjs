@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { VoicePicker } from './VoicePicker';
+import { VoiceGallery } from './VoiceGallery';
 
 const meta = {
-  title: 'Pickers/VoicePicker',
-  component: VoicePicker,
+  title: 'Pickers/VoiceGallery',
+  component: VoiceGallery,
   parameters: { layout: 'centered' },
   args: { compact: false },
   argTypes: {
@@ -16,7 +16,7 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof VoicePicker>;
+} satisfies Meta<typeof VoiceGallery>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

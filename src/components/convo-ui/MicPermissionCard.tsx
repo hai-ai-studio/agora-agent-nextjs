@@ -17,9 +17,9 @@ const HEADLINE: Record<MicPermissionState, string> = {
 
 const BODY: Record<MicPermissionState, string> = {
   prompt:
-    "Aria needs to hear your voice to have a conversation. Audio is processed in real-time and never stored without consent.",
+    "Ada needs to hear your voice to have a conversation. Audio is processed in real-time and never stored without consent.",
   requesting: 'Your browser will show a permission popup.',
-  granted: "You're all set. Aria is ready to talk.",
+  granted: "You're all set. Ada is ready to talk.",
   denied:
     'Enable microphone in your browser settings to start voice conversations.',
 };

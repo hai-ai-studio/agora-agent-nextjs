@@ -24,7 +24,7 @@ export function BigCallButton({
       type="button"
       onClick={onClick}
       aria-label={isActive ? 'End call' : state === 'ringing' ? 'Ringing' : 'Start call'}
-      className={`relative flex size-[72px] cursor-pointer items-center justify-center rounded-full border-0 transition-all duration-[250ms] ease-aria-out ${
+      className={`relative flex size-[72px] cursor-pointer items-center justify-center rounded-full border-0 transition-all duration-[250ms] ease-voice-out ${
         isActive
           ? 'bg-danger text-accent-foreground shadow-[0_0_0_6px_rgba(201,68,68,0.15)]'
           : 'bg-foreground text-background shadow-md'

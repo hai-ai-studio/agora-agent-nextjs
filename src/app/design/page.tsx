@@ -22,7 +22,7 @@ import {
   TranscriptBubble,
   useTypewriter,
   VoiceOrb,
-  VoicePicker,
+  VoiceGallery,
   type VoiceOrbState,
 } from '@/components/convo-ui';
 
@@ -31,7 +31,7 @@ import {
  *
  * Renders all DS primitives from `src/components/convo-ui/*` in 12 numbered sections.
  * This page is a dev reference; not linked from the landing page. Font is Geist via
- * `font-ui`; existing Aria screens stay on `font-ui` (Inter Tight).
+ * `font-ui`; the conversation shell also runs on `font-ui` (Inter Tight).
  */
 
 // Section wrapper — numbered breadcrumb + italic serif title + meta count, separated by
@@ -411,11 +411,11 @@ function TranscriptSection() {
 }
 
 /* =========================================================================
- *  06 — VoicePicker catalog.
+ *  06 — VoiceGallery catalog.
  * ========================================================================= */
-function VoicePickerSection() {
+function VoiceGallerySection() {
   return (
-    <Section num="06" title="Voice Picker" count="6 personas">
+    <Section num="06" title="Voice Gallery" count="6 personas">
       <div className="grid gap-5">
         <div className="flex flex-col gap-4 rounded-3xl border border-border bg-muted p-7">
           <div>
@@ -427,7 +427,7 @@ function VoicePickerSection() {
             </div>
           </div>
           <div className="rounded-xl border border-border bg-surface p-5">
-            <VoicePicker />
+            <VoiceGallery />
           </div>
         </div>
       </div>
@@ -694,7 +694,7 @@ function ProductComposition() {
                   Live call · 02:14
                 </div>
                 <div className="mt-1 text-[15px] font-medium text-foreground">
-                  Billing — Aria
+                  Billing — Ada
                 </div>
               </div>
               <LatencyIndicator ms={180} />
@@ -829,7 +829,7 @@ export default function DesignPage() {
 
       <TranscriptSection />
 
-      <VoicePickerSection />
+      <VoiceGallerySection />
 
       <AgentSection />
       <ToolCallsSection />

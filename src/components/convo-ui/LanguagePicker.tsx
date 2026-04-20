@@ -20,7 +20,7 @@ export const LANGS = [
 
 /**
  * LanguagePicker — dropdown showing flag + locale label + regional accent. Uses the same
- * click-outside pattern as the Aria VoiceSelector / MicPicker: one ref on the container,
+ * click-outside pattern as VoiceLangMenu / MicPicker: one ref on the container,
  * a document-level mousedown listener, unregister on close. `popover` isn't used (still
  * patchy browser support for the HTML popover API + positioning nuances).
  */

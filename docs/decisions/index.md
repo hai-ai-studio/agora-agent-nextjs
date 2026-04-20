@@ -11,8 +11,9 @@ Architectural decision records (ADRs). Each file captures: context that forced t
 | [0003](./0003-motion-over-css-keyframes.md) | `motion/react` first, CSS `@keyframes` as fallback | Accepted |
 | [0004](./0004-no-state-library-yet.md) | No global state library (no Zustand, no Redux) yet | Accepted |
 | [0005](./0005-zod-at-boundaries-only.md) | Zod at boundaries only (API routes + env + RTM payloads) | Proposed |
-| [0006](./0006-aria-skin-ada-agent.md) | "Aria" is the design skin, "Ada" is the agent | Accepted |
+| [0006](./0006-aria-skin-ada-agent.md) | "Aria" is the design skin, "Ada" is the agent | Superseded by [0008](./0008-retire-aria-skin-name.md) |
 | [0007](./0007-dark-mode-via-tokens.md) | Dark mode via `prefers-color-scheme` token overrides | Accepted |
+| [0008](./0008-retire-aria-skin-name.md) | Retire the "Aria" skin name | Accepted |
 
 ## Conventions
 

@@ -35,7 +35,7 @@
 │ L2  DS Stateful UI            components/convo-ui/             │
 │     允许本地 UI 状态（popover open、selection draft、          │
 │     RAF 动画帧），但禁止任何 IO / 浏览器外设 API / 业务类型     │
-│     例：VoicePicker, BarsWave, Persona(timer), AudioPlayer     │
+│     例：VoiceGallery, BarsWave, Persona(timer), AudioPlayer    │
 ├────────────────────────────────────────────────────────────────┤
 │ L1  DS Presentational         components/convo-ui/             │
 │     props-in JSX-out，无 useState、无 useEffect                │
@@ -75,7 +75,7 @@
 已全部扫过，**无业务耦合违规**。分布：
 
 - **L1 纯展示（17）**：`IconButton`, `CallControls`, `BrandMark`, `BargeInIndicator`, `StatusIndicator`, `ConnectionIndicator`, `LatencyIndicator`, `ErrorToast`, `BigCallButton`, `MicPermissionCard`, `VoiceCard`, `SessionList`, `ToolCallCard`, `AgentConfigCard`, `LiveSubtitle`, `TranscriptBubble`, `Icons`
-- **L2 有 UI 状态（6）**：`VoicePicker`, `VoiceSelector`, `LanguagePicker`, `AudioPlayer`, `Persona`（含 call timer）, `BarsWave`（RAF 动画帧）
+- **L2 有 UI 状态（6）**：`VoiceGallery`, `VoiceLangMenu`, `LanguagePicker`, `AudioPlayer`, `Persona`（含 call timer）, `BarsWave`（RAF 动画帧）
 - **L2 RAF-only（4）**：`VoiceOrb`, `LinearWave`, `CircleWave`, `Transcript`（自动滚动 effect）
 - **Ambient**：用了 `useSyncExternalStore` 订阅 `prefers-color-scheme`——属 L2，合规（订阅的是 CSS 媒体查询，不是 IO）。
 
@@ -91,8 +91,8 @@
 | `ConversationShell.tsx` | L4             | ⚠️       | 编排部分合规，但内联了 `transcriptCardBody` JSX + 移动端 sheet + 40 行 motion 代码，混了 L3 的职责。 |
 | `Controls.tsx`          | L3（应为）     | ❌       | 自绘三个 SVG 图标、自定义 `DOCK_PILL`/`CTRL_BTN`/`CTRL_ACTIVE` 样式常量——**这些都是 L1 `CallControls` + `IconButton` + `Icons` 已有的东西**，属于平行重造。 |
 | `Waveform.tsx`          | L3（应为）     | ❌       | 250 行里绝大部分是视觉决策：48-bar shaping、center-mirror envelope、state→颜色 映射、activeOpacity。convo-ui 已有 `BarsWave`，但没用。 |
-| `MicPicker.tsx`         | L3             | ⚠️       | 职责合规（设备 API → 列表），但内联了 chevron 图标 + popover 样式。popover 行为和 L2 的 `VoiceSelector`/`LanguagePicker` 重复。 |
-| `aria-state.ts`         | 非组件         | ❌       | 文件就是类型 + pure function + 常量，**放在 `components/` 下是位置错误**，应迁到 `lib/`。 |
+| `MicPicker.tsx`         | L3             | ⚠️       | 职责合规（设备 API → 列表），但内联了 chevron 图标 + popover 样式。popover 行为和 L2 的 `VoiceLangMenu`/`LanguagePicker` 重复。 |
+| `view-state.ts` (原 `aria-state.ts`) | 非组件 | ✅ | 2026-04-20 迁到 `lib/` + 退役 Aria 名。当前位置正确。 |
 
 ---
 
@@ -100,14 +100,9 @@
 
 按"风险低 → 收益高"排序。每一步独立可落地，独立可 revert。
 
-### Step 1 — `aria-state.ts` → `lib/`（0.5h，零风险）
+### Step 1 — `aria-state.ts` → `lib/view-state.ts`（已完成 2026-04-20）
 
-**动作**：
-
-- `mv src/features/conversation/components/aria-state.ts src/features/conversation/lib/aria-state.ts`
-- 更新 2 处引用（`ConversationShell.tsx`、`LandingPage.tsx`）。
-
-**验收**：`pnpm typecheck` + `pnpm lint` 绿。
+移到 `lib/` 后又配合"退役 Aria 皮肤名"一起改名为 `view-state.ts`，`AriaState` → `ViewState`, `mapToAriaState` → `mapToViewState`, `ARIA_HINT` → `VIEW_HINT`, `--ease-aria-out` → `--ease-voice-out`。
 
 ---
 
@@ -117,7 +112,7 @@
 
 1. 删除 `Controls.tsx` 里的 `IconMic`, `IconEnd`, `IconCaptions` 三个内联 SVG——全部在 convo-ui 的 `icons.tsx` 里有对应物（必要时补齐缺的）。
 2. 删除 `DOCK_PILL`, `CTRL_BTN`, `CTRL_ACTIVE`, `CTRL_END` 四个样式常量，改用 convo-ui `CallControls` + `IconButton` 的 `variant`。
-3. `VoiceSelector` 和 `MicPicker` 作为 `CallControls` 的 slot 插入；如果 `CallControls` 当前 API 不支持自定义 slot，扩展它（L1 层面的扩展，不掺业务）。
+3. `VoiceLangMenu` 和 `MicPicker` 作为 `CallControls` 的 slot 插入；如果 `CallControls` 当前 API 不支持自定义 slot，扩展它（L1 层面的扩展，不掺业务）。
 4. `Controls.tsx` 收缩到 ~50 行，只剩"props 进 / L1 组合出"。
 
 **验收**：
@@ -151,9 +146,9 @@
 
 **动作方向**：
 
-1. **视觉下沉到 L2 `BarsWave`**：`BarsWave` 接受 `state: AriaState | 'idle' | 'listening' | ...` 和可选 `bands: { bass, mid, treble } | null`。如果 `bands` 非 null，用 `shapeByBand` 算 bar 高度；否则按 state 走内置的 synthesized 算法。颜色 / activeOpacity 完全由 state + 主题 token 驱动。
+1. **视觉下沉到 L2 `BarsWave`**：`BarsWave` 接受 `state: ViewState | 'idle' | 'listening' | ...` 和可选 `bands: { bass, mid, treble } | null`。如果 `bands` 非 null，用 `shapeByBand` 算 bar 高度；否则按 state 走内置的 synthesized 算法。颜色 / activeOpacity 完全由 state + 主题 token 驱动。
 2. **L3 `Waveform.tsx` 退化成适配器**：`audioTrack → useAudioFFT → bands → <BarsWave state bands variant />`。代码量从 ~250 行降到 ~30 行。
-3. `mapToAriaState` 的"user/agent 谁是 active"判定留在 L3 侧，通过 `variant` prop 告诉 L2。
+3. `mapToViewState` 的"user/agent 谁是 active"判定留在 L3 侧，通过 `variant` prop 告诉 L2。
 
 **风险点**：`BarsWave` 现在独立运作（`animVals` 内部 RAF），和 `Waveform.tsx` 的 RAF 循环二选一。需要确认同时只有一个 RAF 在跑，否则帧率和电量都遭殃。
 
@@ -163,7 +158,7 @@
 
 ### Step 5 — MicPicker popover 对齐（可选，优先级低）
 
-**动作（可选）**：如果后续还会加第三个 popover，把三个（`VoiceSelector` / `LanguagePicker` / `MicPicker`）共用的 popover 壳抽成 L1 的 `<Popover>`。现在只有三个独立实现，**先不动**——三个平行实现胜过早抽象。
+**动作（可选）**：如果后续还会加第三个 popover，把三个（`VoiceLangMenu` / `LanguagePicker` / `MicPicker`）共用的 popover 壳抽成 L1 的 `<Popover>`。现在只有三个独立实现，**先不动**——三个平行实现胜过早抽象。
 
 ---
 
@@ -177,6 +172,6 @@
 
 这些问题真实存在，但不在本 plan 处理，避免范围蔓延：
 
-- `convo-ui` 内部 `VoicePicker` vs `VoiceSelector` 语义重叠——独立 plan。
+- ~~`convo-ui` 内部 `VoicePicker` vs `VoiceSelector` 语义重叠——独立 plan。~~ Resolved 2026-04-20 — renamed to `VoiceGallery` (card grid) and `VoiceLangMenu` (popover menu); semantics are now disjoint.
 - `BarsWave` / `LinearWave` / `CircleWave` / `VoiceOrb` 的选型指南——写进 Storybook，不在本 plan。
 - `convo-ui` 抽成独立 npm 包 / shadcn registry——已被 ADR 0003 记为 superseded 的方向，暂不重开。

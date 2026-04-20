@@ -36,7 +36,7 @@ src/
     conversation/
       components/
         LandingPage.tsx                — editorial pre-call screen; delegates orchestration to useAgoraSession
-        ConversationShell.tsx          — in-call container; owns Agora RTC hooks, renders Aria layout
+        ConversationShell.tsx          — in-call container; owns Agora RTC hooks, renders the in-call layout
         Waveform.tsx                   — SVG bar visualizer (two rows: agent + user), fluid width
         Controls.tsx                   — pill dock: voice, mic, transcript toggle, end-call
         MicPicker.tsx                  — device picker popover (hot-swap via AgoraRTC.onMicrophoneChanged)
@@ -47,7 +47,7 @@ src/
         useAgoraSession.ts             — token fetch + agent invite + RTM lifecycle
         useAudioFFT.ts                 — MediaStreamTrack → bass/mid/treble band averages (shared by Waveform + lab shader)
       lib/
-        aria-state.ts                  — AriaState enum + mapToAriaState + ADA_AGENT_NAME + ARIA_HINT copy
+        view-state.ts                  — ViewState enum + mapToViewState + ADA_AGENT_NAME + VIEW_HINT copy
         transcript.ts                  — pure helpers: normalizeTranscript, getMessageList,
                                          getCurrentInProgressMessage, normalizeTimestampMs,
                                          toMessageListItem, normalizeTranscriptSpacing
@@ -91,7 +91,7 @@ docs/
     completed/                         — landed plans, historical record
     tech-debt.md                       — running list of known debt
   decisions/                           — ADRs, one per architectural choice
-  design/                              — Aria design language, motion policy, component catalog
+  design/                              — design language, motion policy, component catalog
   architecture/                        — per-topic deep-dives (agora-flow, state-model, styling)
   references/                          — pinned external API surfaces (agent-context)
 ```
@@ -228,10 +228,10 @@ Core real-time component. Must be inside `AgoraRTCProvider`.
 
 **Token renewal:** `useTokenRefresh({ client, rtmClient, onTokenWillExpire })` subscribes to `token-privilege-will-expire` and calls `client.renewToken` + `rtmClient.renewToken` in parallel, reading `client.uid` at handler time.
 
-**View layer (Aria):**
+**View layer:**
 
-- `Persona`, `Waveform`, `Transcript`, `Controls`, `VoiceSelector`, `MicPicker`, `Ambient` directly under `src/features/conversation/components/`. No uikit runtime component is rendered.
-- State mapping: `mapToAriaState(visualizerState, agentState, isMuted)` from `lib/aria-state.ts` collapses `AgentVisualizerState` + agent state + local mute into Aria's 8-state enum (`connecting` / `preparing` / `idle` / `listening` / `thinking` / `speaking` / `muted` / `error`).
+- `Persona`, `Transcript`, `VoiceLangMenu`, `Ambient` (and other presentational primitives) come from `src/components/convo-ui/`. Business-adapter components (`Waveform`, `Controls`, `MicPicker`) live in `src/features/conversation/components/`. No uikit runtime component is rendered.
+- State mapping: `mapToViewState(visualizerState, agentState, isMuted)` from `lib/view-state.ts` collapses `AgentVisualizerState` + agent state + local mute into the 8-state view enum (`connecting` / `preparing` / `idle` / `listening` / `thinking` / `speaking` / `muted` / `error`).
 - Transcript data comes from `messageList` + `currentInProgressMessage` mapped into `{ speaker, text, key }` where `key = ${uid}-${turn_id}` (turn_id is per-speaker, not globally unique).
 
 **Shader visualizer (lab-only):**

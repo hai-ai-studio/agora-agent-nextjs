@@ -6,7 +6,7 @@ const meta = {
   component: VoiceCard,
   parameters: { layout: 'centered' },
   args: {
-    name: 'Aria',
+    name: 'Ada',
     descriptor: 'Warm · Conversational',
     tags: ['female', 'en-US'],
     accent: 'linear-gradient(135deg, #7C5CFF, #E85C8A)',

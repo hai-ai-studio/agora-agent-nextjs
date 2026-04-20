@@ -5,7 +5,7 @@ const meta = {
   title: 'Playback/AudioPlayer',
   component: AudioPlayer,
   parameters: { layout: 'padded' },
-  args: { title: 'Call with Aria', date: 'Today 3:14 PM', duration: 184 },
+  args: { title: 'Call with Ada', date: 'Today 3:14 PM', duration: 184 },
   argTypes: {
     duration: { control: { type: 'range', min: 30, max: 600, step: 15 } },
   },

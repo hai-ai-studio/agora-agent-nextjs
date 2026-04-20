@@ -13,7 +13,7 @@ export interface VoiceCardProps {
 }
 
 /**
- * VoiceCard — persona tile used by VoicePicker. The card hosts two independent actions:
+ * VoiceCard — persona tile used by VoiceGallery. The card hosts two independent actions:
  * a primary "Select" button (covers the card body) and a secondary "Preview" button
  * (small circle, top-right). They are siblings, not nested — nesting interactive
  * controls violates WCAG 4.1.2 (screen readers can't focus the inner). The Select
@@ -32,7 +32,7 @@ export function VoiceCard({
 }: VoiceCardProps) {
   return (
     <div
-      className={`relative flex flex-col gap-2.5 rounded-2xl p-3.5 font-ui transition-all duration-200 ease-aria-out ${
+      className={`relative flex flex-col gap-2.5 rounded-2xl p-3.5 font-ui transition-all duration-200 ease-voice-out ${
         selected
           ? 'bg-gradient-to-br from-white to-muted shadow-md ring-1 ring-accent'
           : 'border border-border bg-surface shadow-sm'

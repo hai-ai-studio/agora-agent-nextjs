@@ -34,7 +34,7 @@ export function TranscriptBubble({
           {isAgent && (
             <span className="inline-block size-3.5 rounded-full bg-gradient-to-br from-voice-a via-voice-b to-voice-c" />
           )}
-          <span>{isAgent ? 'Aria' : 'You'}</span>
+          <span>{isAgent ? 'Ada' : 'You'}</span>
           {timestamp && <span className="text-muted-foreground">· {timestamp}</span>}
         </div>
         <div

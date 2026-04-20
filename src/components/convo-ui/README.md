@@ -65,10 +65,10 @@ for the full rulebook and the checklist used to classify each file.
 ### Voice / language pickers
 | Component | Layer | What it is |
 | --- | --- | --- |
-| `VoicePicker` | L2 | 6-card gallery of voice personas. |
+| `VoiceGallery` | L2 | 6-card gallery of voice personas. |
 | `VoiceCard` | L1 | One persona card (also used standalone). |
 | `LanguagePicker` | L2 | Flag + accent dropdown, 8 locales. |
-| `VoiceSelector` | L2 | Compact voice + language popover for the dock. |
+| `VoiceLangMenu` | L2 | Compact voice + language popover for the dock. |
 
 ### Session / agent / tools
 | Component | Layer | What it is |

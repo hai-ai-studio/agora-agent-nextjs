@@ -152,18 +152,18 @@ Three waveform styles. SVG-based, no audio graph required.
 - `ConnectionIndicator`: header connection signal with secondary-badge slot.
 - `ErrorToast`: fixed-position `role="alert"` banner.
 
-### Controls — `IconButton`, `CallControls`, `BigCallButton`, `VoiceSelector`, `Icons`
+### Controls — `IconButton`, `CallControls`, `BigCallButton`, `VoiceLangMenu`, `Icons`
 - `IconButton / CallControls / BigCallButton`: round controls + glass-morph dock +
   primary call CTA.
-- `VoiceSelector`: compact voice + language dropdown for the dock.
+- `VoiceLangMenu`: compact voice + language dropdown for the dock.
 
 ### Transcript — `TranscriptBubble`, `LiveSubtitle`, `Transcript`
 - `TranscriptBubble`: single message bubble with timestamp + streaming caret.
 - `LiveSubtitle`: center-overlay caption for dark stages.
 - `Transcript`: scrolling log with history + live-turn blink caret.
 
-### Pickers — `VoicePicker`, `VoiceCard`, `LanguagePicker`, `BargeInIndicator`
-- `VoicePicker / VoiceCard`: card-grid voice library.
+### Pickers — `VoiceGallery`, `VoiceCard`, `LanguagePicker`, `BargeInIndicator`
+- `VoiceGallery / VoiceCard`: card-grid voice library.
 - `LanguagePicker`: standalone locale dropdown.
 - `BargeInIndicator`: active/inactive interruption affordance.
 
@@ -220,8 +220,8 @@ Every component must have a `*.stories.tsx` next to it. Conventions:
   rendering stories separate from interaction stories so a failed interaction doesn't
   break the visual-only catalog entries. Interaction stories run as vitest tests via
   `@storybook/addon-vitest`; use `pnpm test` to run the full suite headlessly
-  (chromium via playwright). Current examples: `VoiceSelector/OpensMenu`,
-  `VoiceSelector/SelectsVoice`, `CallControls/TogglesMute`,
+  (chromium via playwright). Current examples: `VoiceLangMenu/OpensMenu`,
+  `VoiceLangMenu/SelectsVoice`, `CallControls/TogglesMute`,
   `CallControls/TogglesPause`, `IconButton/FiresOnClick`,
   `BigCallButton/ClickStartsCall`.
 
@@ -287,7 +287,7 @@ presentational, promote it:
 4. Update the feature-side imports to come from `@/components/convo-ui`.
 5. Delete the original file.
 
-`Ambient`, `Persona`, `Transcript`, `VoiceSelector` (and later `BrandMark`,
+`Ambient`, `Persona`, `Transcript`, `VoiceLangMenu` (and later `BrandMark`,
 `ConnectionIndicator`, `ErrorToast`) were promoted this way; treat them as worked examples.
 
 ## 9. Non-goals

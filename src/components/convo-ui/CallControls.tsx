@@ -15,7 +15,7 @@ export interface CallControlsProps {
  * CallControls — floating glass-morph bar composing five round IconButtons plus a hairline
  * divider before the hangup. Drop this into `position: fixed bottom-0` in real usage; on
  * the /design catalog it sits inside a Cell stage. The `backdrop-blur-xl` + `bg-surface/80`
- * pair is the signature glass look shared with the mobile transcript sheet in Aria.
+ * pair is the signature glass look shared with the mobile transcript sheet.
  */
 export function CallControls({
   muted,

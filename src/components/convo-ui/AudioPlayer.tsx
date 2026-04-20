@@ -19,7 +19,7 @@ const BARS = 56;
  */
 export function AudioPlayer({
   duration = 184,
-  title = 'Call with Aria',
+  title = 'Call with Ada',
   date = 'Today 3:14 PM',
 }: AudioPlayerProps) {
   const [playing, setPlaying] = useState(false);

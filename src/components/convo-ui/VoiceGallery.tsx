@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { VoiceCard } from './VoiceCard';
 
-export interface VoicePickerProps {
+export interface VoiceGalleryProps {
   compact?: boolean;
 }
 
@@ -12,7 +12,7 @@ export interface VoicePickerProps {
 // screens. Tags drive the uppercase chip row at the bottom of each card.
 export const VOICES = [
   {
-    name: 'Aria',
+    name: 'Ada',
     descriptor: 'Warm · Conversational',
     tags: ['female', 'en-US'],
     accent: 'linear-gradient(135deg, #7C5CFF, #E85C8A)',
@@ -50,12 +50,12 @@ export const VOICES = [
 ] as const;
 
 /**
- * VoicePicker — 6-card grid (or 4 in `compact` mode). Tracks two pieces of state locally:
+ * VoiceGallery — 6-card grid (or 4 in `compact` mode). Tracks two pieces of state locally:
  * `selected` is the committed voice (persists across renders); `previewing` is a transient
  * audio-preview toggle that only one card can hold at a time.
  */
-export function VoicePicker({ compact = false }: VoicePickerProps) {
-  const [selected, setSelected] = useState<string>('Aria');
+export function VoiceGallery({ compact = false }: VoiceGalleryProps) {
+  const [selected, setSelected] = useState<string>('Ada');
   const [previewing, setPreviewing] = useState<string | null>(null);
   const list = compact ? VOICES.slice(0, 4) : VOICES;
   return (
@@ -79,4 +79,4 @@ export function VoicePicker({ compact = false }: VoicePickerProps) {
   );
 }
 
-export default VoicePicker;
+export default VoiceGallery;

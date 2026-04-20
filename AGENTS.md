@@ -55,13 +55,13 @@ The toolkit uses `uid="0"` as a sentinel for the local user's speech. The uikit 
 
 Include `INTERRUPTED` turns in `messageList` (filter only `IN_PROGRESS`). If the agent's first turn is interrupted, omitting it means `messageList` stays empty and `ConvoTextStream` never auto-opens. Enforced in `getMessageList` (`src/features/conversation/lib/transcript.ts`).
 
-### Aria View Layer
+### Conversation View Layer
 
-The main conversation UI is the editorial "Aria" skin. Presentational components (`Ambient`, `Persona`, `Waveform` variants, `Transcript`, `VoiceSelector`, etc.) live in `src/components/convo-ui/` — see [`docs/guides/CONVO_UI.md`](./docs/guides/CONVO_UI.md). The business shell lives under `src/features/conversation/components/`: `LandingPage`, `ConversationShell`, `Waveform` (Agora audio-track adapter), `Controls` + `MicPicker` (pill-shaped dock). Aria state enum + mapper + copy constants live in `features/conversation/lib/aria-state.ts`.
+Presentational components (`Ambient`, `Persona`, `Waveform` variants, `Transcript`, `VoiceLangMenu`, etc.) live in `src/components/convo-ui/` — see [`docs/guides/CONVO_UI.md`](./docs/guides/CONVO_UI.md). The business shell lives under `src/features/conversation/components/`: `LandingPage`, `ConversationShell`, `Waveform` (Agora audio-track adapter), `Controls` + `MicPicker` (pill-shaped dock). View-state enum + mapper + copy constants live in `features/conversation/lib/view-state.ts`.
 
-`ConversationShell` keeps all Agora wiring (hooks, StrictMode guard, `useAgoraVoiceAI`, `useTokenRefresh`) and maps the existing `visualizerState` into Aria's state enum via `mapToAriaState(visualizerState, agentState, isMuted)`.
+`ConversationShell` keeps all Agora wiring (hooks, StrictMode guard, `useAgoraVoiceAI`, `useTokenRefresh`) and maps the existing `visualizerState` into the view-state enum via `mapToViewState(visualizerState, agentState, isMuted)`.
 
-**Naming:** "Aria" is the design-skin name (reference HTML it was ported from). "Ada" is the agent's spoken name — see [`docs/decisions/0006-aria-skin-ada-agent.md`](./docs/decisions/0006-aria-skin-ada-agent.md).
+**Agent name:** "Ada" — `ADA_AGENT_NAME` constant in `view-state.ts` is the single source of truth. The old "Aria skin" name was retired 2026-04-20; see [`docs/decisions/0006-aria-skin-ada-agent.md`](./docs/decisions/0006-aria-skin-ada-agent.md) (Superseded).
 
 ### Styling + animation conventions
 
@@ -76,13 +76,13 @@ Fonts come from `next/font/google` (Inter Tight, Instrument Serif, JetBrains Mon
 
 The shader visualizer (`src/features/visualizer-lab/components/AgentShaderVisualizer/`) stays in the codebase but is only rendered at `/lab/visualizer`. It is not used by the main conversation flow.
 
-### Voice Agent Design System (coexists with Aria)
+### Voice Agent Design System
 
-A second design language lives in-tree at `src/components/convo-ui/` with its own token set (`--voice-a/b/c`, `--paper-0..7`, `--dark-0..4`, `--ok/warn/err/info`, `--font-geist`). Rendered in catalog form at `/design`. Future extraction to a standalone npm package or a shadcn registry stays open — not today's scope.
+`src/components/convo-ui/` is the single DS for this project, with its own token set (`--voice-a/b/c`, warm neutrals, semantic roles, `--font-geist`). Rendered in catalog form at `/design`. Future extraction to a standalone npm package or a shadcn registry stays open — not today's scope.
 
 **Storybook 10** lives at the repo root (`.storybook/`). Every component has a co-located `*.stories.tsx` file under `src/components/convo-ui/`. Run `pnpm storybook` for the dev server; `pnpm build-storybook` produces a static export. `@storybook/addon-a11y` runs axe-core on each story; `@storybook/addon-themes` provides a Light / Dark toggle via the `dark:` class.
 
-Rule: **new feature UI reaches for `convo-ui` primitives; the existing conversation feature stays on Aria** until a separate migration plan opens. See `docs/decisions/0003-voice-design-system.md`.
+Rule: **new feature UI reaches for `convo-ui` primitives first**; the conversation feature has been migrated onto them as of 2026-04-20. See `docs/decisions/0003-voice-design-system.md`.
 
 ## Architecture layers
 
@@ -91,9 +91,9 @@ Rule: **new feature UI reaches for `convo-ui` primitives; the existing conversat
 | Client UI | `agora-rtc-react` | RTC hooks (`useJoin`, `useLocalMicrophoneTrack`, `usePublish`, etc.) |
 | Toolkit core | `agora-agent-client-toolkit` | `AgoraVoiceAI`, `TurnStatus` enum, `TranscriptHelperItem` types |
 | UI components | `agora-agent-uikit` | Type exports (`AgentVisualizerState`, `IMessageListItem`) consumed by helpers in `src/features/conversation/lib/`. Its runtime components are no longer rendered in the main flow. |
-| View layer | `src/features/conversation/components/` | Ambient, Persona, Waveform, Transcript, Controls, VoiceSelector, MicPicker + aria-state |
+| View layer | `src/components/convo-ui/` + `src/features/conversation/components/` | Presentational primitives in `convo-ui`; business shell (LandingPage, ConversationShell, Waveform, Controls, MicPicker) in features. State machine in `features/conversation/lib/view-state.ts`. |
 | Visualizer (lab) | `src/features/visualizer-lab/components/AgentShaderVisualizer/` | WebGL shader visualizer — `/lab/visualizer` only |
-| Design system | `src/components/convo-ui/` | Voice Agent DS primitives (20 components + `useTypewriter` hook) — rendered at `/design` |
+| Design system | `src/components/convo-ui/` | Voice Agent DS primitives (28 components + hooks) — rendered at `/design` |
 | Server SDK | `agora-agent-server-sdk` | Builder pattern — `AgoraClient` → `Agent` → `session.start()` |
 | Messaging | `agora-rtm` | RTM transport for transcripts |
 

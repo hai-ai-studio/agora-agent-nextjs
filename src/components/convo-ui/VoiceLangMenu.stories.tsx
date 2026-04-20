@@ -1,19 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import { useState } from 'react';
-import { VoiceSelector, DEFAULT_VOICES } from './VoiceSelector';
+import { VoiceLangMenu, DEFAULT_VOICES } from './VoiceLangMenu';
 
-function DefaultStory(args: React.ComponentProps<typeof VoiceSelector>) {
+function DefaultStory(args: React.ComponentProps<typeof VoiceLangMenu>) {
   const [voice, setVoice] = useState(args.voice);
-  return <VoiceSelector {...args} voice={voice} onVoiceChange={setVoice} />;
+  return <VoiceLangMenu {...args} voice={voice} onVoiceChange={setVoice} />;
 }
 
-function ControlledStory(args: React.ComponentProps<typeof VoiceSelector>) {
+function ControlledStory(args: React.ComponentProps<typeof VoiceLangMenu>) {
   const [voice, setVoice] = useState(args.voice);
   const [lang, setLang] = useState('English (US)');
   return (
     <div className="flex flex-col items-start gap-3">
-      <VoiceSelector
+      <VoiceLangMenu
         {...args}
         voice={voice}
         onVoiceChange={setVoice}
@@ -28,20 +28,20 @@ function ControlledStory(args: React.ComponentProps<typeof VoiceSelector>) {
   );
 }
 
-function AllEnabledStory(args: React.ComponentProps<typeof VoiceSelector>) {
+function AllEnabledStory(args: React.ComponentProps<typeof VoiceLangMenu>) {
   const [voice, setVoice] = useState('nova');
-  return <VoiceSelector {...args} voice={voice} onVoiceChange={setVoice} />;
+  return <VoiceLangMenu {...args} voice={voice} onVoiceChange={setVoice} />;
 }
 
 const meta = {
-  title: 'Controls/VoiceSelector',
-  component: VoiceSelector,
+  title: 'Controls/VoiceLangMenu',
+  component: VoiceLangMenu,
   parameters: {
     layout: 'centered',
     docs: {
       description: {
         component:
-          'Compact combined voice + language picker. Designed for the in-call dock where horizontal space is tight. Distinct from `VoicePicker` (card grid for the voice library page) and `LanguagePicker` (standalone locale dropdown). Below 480px viewport width the trigger collapses to a 36×36 ink-dot pill.',
+          'Compact combined voice + language picker. Designed for the in-call dock where horizontal space is tight. Distinct from `VoiceGallery` (card grid for the voice library page) and `LanguagePicker` (standalone locale dropdown). Below 480px viewport width the trigger collapses to a 36×36 ink-dot pill.',
       },
     },
   },
@@ -60,7 +60,7 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof VoiceSelector>;
+} satisfies Meta<typeof VoiceLangMenu>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

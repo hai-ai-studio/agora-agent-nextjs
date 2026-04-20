@@ -3,31 +3,31 @@
 import { useEffect, useId, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 
-// Compact combined voice + language picker. Sits inside the call-dock. Distinct from:
-//  - VoicePicker → card grid for the voice library page
+// Compact combined voice + language menu. Sits inside the call-dock. Distinct from:
+//  - VoiceGallery → card grid for the voice library page
 //  - LanguagePicker → standalone language dropdown
 // This one is a single ink-dot pill that opens a two-section menu (Voice over Language).
 
-export interface VoiceSelectorVoice {
+export interface VoiceLangMenuVoice {
   id: string;
   name: string;
   desc: string;
   disabled?: boolean;
 }
 
-export interface VoiceSelectorLang {
+export interface VoiceLangMenuLang {
   label: string;
   disabled?: boolean;
 }
 
-const DEFAULT_VOICES: VoiceSelectorVoice[] = [
+const DEFAULT_VOICES: VoiceLangMenuVoice[] = [
   { id: 'ada', name: 'Ada', desc: 'Warm, conversational' },
   { id: 'nova', name: 'Nova', desc: 'Crisp, professional', disabled: true },
   { id: 'sol', name: 'Sol', desc: 'Calm, thoughtful', disabled: true },
   { id: 'echo', name: 'Echo', desc: 'Playful, curious', disabled: true },
 ];
 
-const DEFAULT_LANGS: VoiceSelectorLang[] = [
+const DEFAULT_LANGS: VoiceLangMenuLang[] = [
   { label: 'English (US)' },
   { label: 'English (UK)', disabled: true },
   { label: '日本語', disabled: true },
@@ -54,24 +54,24 @@ function IconChevron() {
   );
 }
 
-export interface VoiceSelectorProps {
+export interface VoiceLangMenuProps {
   voice: string;
   onVoiceChange: (id: string) => void;
   /** Currently-selected language label. When undefined the component self-manages. */
   language?: string;
   onLanguageChange?: (label: string) => void;
-  voices?: VoiceSelectorVoice[];
-  languages?: VoiceSelectorLang[];
+  voices?: VoiceLangMenuVoice[];
+  languages?: VoiceLangMenuLang[];
 }
 
-export function VoiceSelector({
+export function VoiceLangMenu({
   voice,
   onVoiceChange,
   language,
   onLanguageChange,
   voices = DEFAULT_VOICES,
   languages = DEFAULT_LANGS,
-}: VoiceSelectorProps) {
+}: VoiceLangMenuProps) {
   const [open, setOpen] = useState(false);
   const [internalLang, setInternalLang] = useState<string>(
     languages.find((l) => !l.disabled)?.label ?? languages[0]?.label ?? '',
@@ -81,10 +81,10 @@ export function VoiceSelector({
     if (onLanguageChange) onLanguageChange(next);
     else setInternalLang(next);
   };
-  // Per-instance DOM-scoping class so the outside-click handler only closes THIS picker
-  // when multiple VoiceSelectors sit on the same page.
+  // Per-instance DOM-scoping class so the outside-click handler only closes THIS menu
+  // when multiple VoiceLangMenus sit on the same page.
   const reactId = useId();
-  const scopeClass = `voice-sel-${reactId.replace(/:/g, '')}`;
+  const scopeClass = `voice-lang-menu-${reactId.replace(/:/g, '')}`;
 
   useEffect(() => {
     if (!open) return;
@@ -144,8 +144,8 @@ export function VoiceSelector({
 }
 
 interface VoiceMenuProps {
-  voices: VoiceSelectorVoice[];
-  languages: VoiceSelectorLang[];
+  voices: VoiceLangMenuVoice[];
+  languages: VoiceLangMenuLang[];
   voice: string;
   onVoiceChange: (id: string) => void;
   lang: string;
@@ -234,4 +234,4 @@ function SoonBadge() {
 }
 
 export { DEFAULT_VOICES, DEFAULT_LANGS };
-export default VoiceSelector;
+export default VoiceLangMenu;

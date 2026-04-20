@@ -53,7 +53,7 @@ export function IconButton({
       aria-label={label}
       aria-pressed={active ?? undefined}
       style={{ width: size, height: size }}
-      className={`relative flex cursor-pointer items-center justify-center rounded-full transition-all duration-200 ease-aria-out hover:-translate-y-px ${variantClass}`}
+      className={`relative flex cursor-pointer items-center justify-center rounded-full transition-all duration-200 ease-voice-out hover:-translate-y-px ${variantClass}`}
     >
       {icon}
     </button>

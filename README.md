@@ -44,7 +44,7 @@ The browser uses the Next.js app for token generation and agent lifecycle calls,
 - browser voice client built with Next.js App Router
 - RTC audio plus RTM transcript and state events
 - server routes for token generation, invite, and stop
-- Editorial "Aria" UI — concentric-ring persona, two-row bar waveform (agent / you), glass side transcript, pill-shaped controls dock — built directly on top of the Agora hooks
+- Editorial conversation UI — concentric-ring persona, two-row bar waveform (agent / you), glass side transcript, pill-shaped controls dock — built directly on top of the Agora hooks
 - Agora-managed default STT, LLM, and TTS configuration
 
 ## How It Works
@@ -73,14 +73,14 @@ Examples:
 
 This is a **pnpm workspace**. The Next.js quickstart lives at the root; the Voice Agent design system ships as a sibling package under `packages/`.
 
-**App (root)** — conversation feature, using the existing "Aria" design:
+**App (root)** — conversation feature:
 - `src/app/api/generate-agora-token/route.ts` issues RTC + RTM tokens
 - `src/app/api/invite-agent/route.ts` starts the agent session
 - `src/app/api/stop-conversation/route.ts` stops the agent session
 - `src/features/conversation/components/LandingPage.tsx` editorial pre-call screen; delegates orchestration to `useAgoraSession`
-- `src/features/conversation/components/ConversationShell.tsx` Agora RTC hooks + Aria layout
+- `src/features/conversation/components/ConversationShell.tsx` Agora RTC hooks + in-call layout
 - `src/features/conversation/hooks/` `useStrictModeReady`, `useAgoraVoiceAI`, `useTokenRefresh`, `useAgoraSession`
-- `src/features/conversation/components/` Aria shell — `LandingPage`, `ConversationShell`, `Waveform`, `Controls`, `MicPicker`. View-state enum + copy in `lib/aria-state.ts`.
+- `src/features/conversation/components/` business shell — `LandingPage`, `ConversationShell`, `Waveform`, `Controls`, `MicPicker`. View-state enum + copy in `lib/view-state.ts`.
 - `src/features/conversation/server/invite-agent-config.ts` system prompt + greeting (edit to change persona)
 - `src/features/visualizer-lab/components/AgentShaderVisualizer/` WebGL-shader visualizer used by the `/lab/visualizer` playground
 - `src/app/lab/visualizer/` standalone page for tuning the shader visualizer

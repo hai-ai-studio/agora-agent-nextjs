@@ -225,10 +225,10 @@ export const Colors: Story = {
         sub="Two levels. Anything quieter uses opacity."
       >
         <p className="mb-5 max-w-2xl text-[12px] leading-relaxed text-muted-foreground">
-          Only two text levels exist, both AA-compliant. For "even quieter" cases
+          Only two text levels exist, both AA-compliant. For &ldquo;even quieter&rdquo; cases
           (decorative metadata, ghost placeholders) use Tailwind opacity suffixes:{' '}
           <code className="font-mono text-[11px] text-foreground">text-muted-foreground/60</code>
-          . Don't add new text tokens.
+          . Don&apos;t add new text tokens.
         </p>
         <SemanticRow utility="text-foreground" description="Headings + primary body.">
           <span className="font-ui text-base text-foreground">Agora — voice AI.</span>
@@ -536,12 +536,12 @@ export const Motion: Story = {
 
       <Section num="D2" title="Ease curves" sub="Semantic ease tokens">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <EaseCurveCell name="ease-aria-out" value="cubic-bezier(0.16, 1, 0.3, 1)" />
+          <EaseCurveCell name="ease-voice-out" value="cubic-bezier(0.16, 1, 0.3, 1)" />
           <EaseCurveCell name="ease-organic" value="cubic-bezier(0.32, 0.72, 0, 1)" />
           <EaseCurveCell name="ease-spring" value="cubic-bezier(0.5, 1.4, 0.4, 1)" />
         </div>
         <p className="mt-5 text-[13px] leading-relaxed text-muted-foreground">
-          <strong className="text-foreground">aria-out</strong> — the default for state
+          <strong className="text-foreground">voice-out</strong> — the default for state
           changes and layout transitions. Fast start, long trailing settle.{' '}
           <strong className="text-foreground">organic</strong> — used on the VoiceOrb
           breathe and other natural-feeling loops.{' '}

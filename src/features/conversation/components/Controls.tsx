@@ -1,7 +1,7 @@
 'use client';
 
 import type { IMicrophoneAudioTrack } from 'agora-rtc-react';
-import { VoiceSelector } from '@/components/convo-ui';
+import { VoiceLangMenu } from '@/components/convo-ui';
 import { MicPicker } from './MicPicker';
 function IconMic({ muted }: { muted: boolean }) {
   return (
@@ -112,7 +112,7 @@ export function Controls({
 }: ControlsProps) {
   return (
     <div className={DOCK_PILL}>
-      <VoiceSelector voice={voice} onVoiceChange={onVoiceChange} />
+      <VoiceLangMenu voice={voice} onVoiceChange={onVoiceChange} />
 
       <div className="relative inline-flex items-center gap-0.5">
         <button

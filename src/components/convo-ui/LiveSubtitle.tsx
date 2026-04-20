@@ -21,7 +21,7 @@ export function LiveSubtitle({
           speaker === 'agent' ? 'text-voice-b' : 'text-warm-2'
         }`}
       >
-        {speaker === 'agent' ? 'Aria' : 'You'}
+        {speaker === 'agent' ? 'Ada' : 'You'}
       </div>
       <div className="[text-wrap:balance]">
         {text}

@@ -6,9 +6,20 @@ import { MessageCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
-import { Ambient, BrandMark, ErrorToast } from '@/components/convo-ui';
+import {
+  Ambient,
+  BrandMark,
+  ErrorToast,
+  useTypewriterCycle,
+} from '@/components/convo-ui';
 import { useAgoraSession } from '@/features/conversation/hooks/useAgoraSession';
-import { ADA_AGENT_NAME } from '@/features/conversation/lib/aria-state';
+import { ADA_AGENT_NAME } from '@/features/conversation/lib/view-state';
+
+// Hero typewriter cycle. Four phrases: three real agent names (overlapping with
+// the VoiceGallery library so the continuity reads) + a "your agent" reveal
+// that lingers longer, carrying the SDK positioning visually. Module-level
+// constant so the hook's effect dep is stable across renders.
+const HERO_AGENT_CYCLE = [ADA_AGENT_NAME, 'Nova', 'Echo', 'your agent'];
 
 // Dynamically import the ConversationShell with ssr disabled.
 const ConversationShell = dynamic(() => import('./ConversationShell'), {
@@ -63,6 +74,13 @@ export default function LandingPage() {
     handleTokenWillExpire,
   } = useAgoraSession();
 
+  const cyclingName = useTypewriterCycle(HERO_AGENT_CYCLE, {
+    typeSpeedMs: 70,
+    backspaceSpeedMs: 40,
+    holdMs: 2500,
+    lastHoldMs: 3800,
+  });
+
   // In-call path: ConversationShell owns its own shell. We just mount it inside the RTC
   // provider + error boundary. The non-fatal invite warning floats on top as a toast so it
   // doesn't disrupt the shell layout.
@@ -104,16 +122,44 @@ export default function LandingPage() {
 
       <header className="relative z-20 flex shrink-0 items-center justify-between px-6 py-3.5 max-lg:px-4 max-lg:py-3">
         <BrandMark agentName={ADA_AGENT_NAME} />
+        <nav className="flex items-center">
+          <a
+            href="https://docs.agora.io/en/conversational-ai/overview/product-overview"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground transition-colors duration-150 hover:text-foreground"
+          >
+            Docs →
+          </a>
+        </nav>
       </header>
 
       <main className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6">
         <h1 className="text-center font-display text-[clamp(40px,6vw,64px)] italic font-normal leading-none tracking-[-0.02em] text-foreground">
-          Say hi to {ADA_AGENT_NAME}.
+          Say hi to{' '}
+          {/*
+           * Cycling agent name. `inline-block text-left` so the caret advances
+           * inside a baseline-aligned span rather than stretching the inline
+           * flow. We intentionally do NOT lock min-width — letting the headline
+           * breathe as the cycle progresses reinforces that the name is a
+           * variable, not a static label. The caret uses the same voice-b bar
+           * as TranscriptBubble / LiveSubtitle so the visual vocabulary reads
+           * as "this is a voice-AI thing".
+           */}
+          <span className="inline-block text-left">
+            <span aria-live="polite">{cyclingName}</span>
+            <span
+              aria-hidden="true"
+              className="ml-0.5 inline-block h-[0.75em] w-[3px] translate-y-[0.08em] bg-voice-b align-middle animate-caret-blink"
+            />
+          </span>
         </h1>
+        <p className="max-w-xl text-center font-display text-lg italic leading-snug text-muted-foreground">
+          Conversations that sound like someone&apos;s actually listening.
+        </p>
         <p className="max-w-md text-center font-ui text-sm text-muted-foreground">
-          A voice-first demo of Agora&apos;s Conversational AI Engine. Tap start
-          and speak naturally &mdash; the agent listens, thinks, and replies in
-          real time.
+          Agora&apos;s Conversational AI Engine turns any LLM into a real-time
+          voice agent. {ADA_AGENT_NAME} is one we built. Yours is next.
         </p>
 
         {showConversation && (!agoraData || !rtmClient) ? (

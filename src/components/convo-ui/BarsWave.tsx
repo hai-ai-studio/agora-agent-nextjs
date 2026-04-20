@@ -71,7 +71,7 @@ export function BarsWave({
         return (
           <div
             key={i}
-            className={`flex-1 rounded-sm transition-[height] duration-[90ms] ease-aria-out ${
+            className={`flex-1 rounded-sm transition-[height] duration-[90ms] ease-voice-out ${
               active ? 'opacity-100' : 'opacity-40'
             }`}
             style={{ height: h, background: bg }}

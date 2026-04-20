@@ -110,7 +110,7 @@ export function MicPicker({ localMicrophoneTrack }: MicPickerProps) {
     };
   }, [localMicrophoneTrack, refreshDevices]);
 
-  // Close when a click lands outside the popover — matches the VoiceSelector pattern.
+  // Close when a click lands outside the popover — matches the VoiceLangMenu pattern.
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
