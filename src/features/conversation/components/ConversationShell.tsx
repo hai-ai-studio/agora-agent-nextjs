@@ -126,16 +126,28 @@ export default function ConversationShell({
   // gives us "what was most recently said" which matches what the user
   // wants to see in the hero caption: their utterance once captured, and
   // Ada's full response once it arrives.
+  //
+  // For agent turns the metadata carries per-word timestamps that drive
+  // the karaoke-style active-word highlight in ConversationVoice. User
+  // turns come from ASR and have `words: null` — fine, the caption falls
+  // back to plain text rendering.
   const currentInProgressMessage = useMemo(() => {
     const last = transcript[transcript.length - 1];
     if (!last || typeof last.text !== 'string' || !last.text.trim()) {
       return null;
     }
+    const metadataWords = (
+      last.metadata as
+        | { words?: Array<{ word: string; start_ms: number; duration_ms: number }> | null }
+        | undefined
+    )?.words;
+    const words = Array.isArray(metadataWords) ? metadataWords : null;
     return {
       turn_id: last.turn_id,
       uid: Number(last.uid) || 0,
       text: last.text,
       status: last.status,
+      words,
     };
   }, [transcript]);
 
@@ -197,7 +209,7 @@ export default function ConversationShell({
 
   const activeTranscript = useMemo(() => {
     if (!currentInProgressMessage) {
-      return { text: '', speaker: 'agent' as const };
+      return { text: '', speaker: 'agent' as const, words: null };
     }
     return {
       text: currentInProgressMessage.text,
@@ -205,6 +217,7 @@ export default function ConversationShell({
         currentInProgressMessage.uid.toString() === agentUID
           ? ('agent' as const)
           : ('user' as const),
+      words: currentInProgressMessage.words,
     };
   }, [currentInProgressMessage, agentUID]);
 

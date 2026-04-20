@@ -44,12 +44,21 @@ export interface ConversationVoiceProps {
   orbSize?: number;
   /**
    * Currently-streaming speech to show under the mic strip. `text` is the
-   * partial transcript; `speaker` drives the small prefix label. Pass `null`
-   * or empty text to hide the line (a non-breaking space still holds the slot
-   * so layout doesn't jump). Caller is expected to prioritize user speech on
-   * barge-in — see `getPriorityInProgressMessage`.
+   * full transcript string; `speaker` indicates who's speaking. When
+   * `words` is provided (agent turns carry word-level timestamps), the
+   * caption renders in karaoke style — each word lights up as it's spoken
+   * based on `start_ms`. User turns typically have `words: null` (ASR
+   * doesn't expose word timing), and the caption falls back to plain text.
    */
-  activeSpeech?: { text: string; speaker: 'agent' | 'user' } | null;
+  activeSpeech?: {
+    text: string;
+    speaker: 'agent' | 'user';
+    words?: Array<{
+      word: string;
+      start_ms: number;
+      duration_ms: number;
+    }> | null;
+  } | null;
 }
 
 // 8-state conversation enum → 5-state orb enum. `connecting`/`preparing` map
@@ -155,7 +164,15 @@ export function ConversationVoice({
   // the permanent record.
   const SPEECH_LINGER_MS = 2800;
   const [persistedSpeech, setPersistedSpeech] = useState<
-    { text: string; speaker: 'agent' | 'user' } | null
+    {
+      text: string;
+      speaker: 'agent' | 'user';
+      words?: Array<{
+        word: string;
+        start_ms: number;
+        duration_ms: number;
+      }> | null;
+    } | null
   >(null);
   const speechHideTimer = useRef<number | null>(null);
 
@@ -202,6 +219,36 @@ export function ConversationVoice({
   const displayed = liveText.length > 0 ? activeSpeech : persistedSpeech;
   const speechText = displayed?.text ?? '';
   const hasSpeech = speechText.trim().length > 0;
+  const words = displayed?.words ?? null;
+
+  // Karaoke-style word highlight. The toolkit hands us per-word start_ms
+  // timestamps synced with TTS playback, so we can light up whichever word
+  // "now" falls inside. Only available for agent turns (ASR doesn't publish
+  // word timings) — user turns render as plain text. RAF loop updates state
+  // only on index change to avoid per-frame re-renders while holding on a
+  // single word.
+  const [activeWordIdx, setActiveWordIdx] = useState(-1);
+  useEffect(() => {
+    let raf = 0;
+    let prevIdx = -1;
+    const tick = () => {
+      let idx = -1;
+      if (words && words.length > 0) {
+        const now = Date.now();
+        for (let i = 0; i < words.length; i++) {
+          if (words[i].start_ms <= now) idx = i;
+          else break;
+        }
+      }
+      if (idx !== prevIdx) {
+        prevIdx = idx;
+        setActiveWordIdx(idx);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [words]);
 
   return (
     <div className="flex flex-col items-center gap-5">
@@ -238,8 +285,30 @@ export function ConversationVoice({
         }`}
         aria-live="polite"
       >
-        <div className="font-display italic text-lg leading-snug text-foreground [text-wrap:balance]">
-          {speechText || '\u00A0'}
+        <div className="font-display italic text-lg leading-snug [text-wrap:balance]">
+          {words && words.length > 0 ? (
+            // Karaoke: per-word spans, current word in voice-b. Past words
+            // stay at normal foreground (so the user can read back what was
+            // already said); upcoming words use the muted tone to visually
+            // separate "not yet spoken". No key churn — words is stable
+            // per turn.
+            words.map((w, i) => (
+              <span
+                key={i}
+                className={
+                  i === activeWordIdx
+                    ? 'font-medium text-voice-b transition-colors duration-100'
+                    : i < activeWordIdx
+                      ? 'text-foreground transition-colors duration-200'
+                      : 'text-muted-foreground/60 transition-colors duration-200'
+                }
+              >
+                {w.word}
+              </span>
+            ))
+          ) : (
+            <span className="text-foreground">{speechText || '\u00A0'}</span>
+          )}
           {hasSpeech && (
             <span
               aria-hidden="true"
