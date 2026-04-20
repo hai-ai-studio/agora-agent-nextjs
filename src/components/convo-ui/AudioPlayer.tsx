@@ -1,6 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+} from 'react';
 
 export interface AudioPlayerProps {
   duration?: number;
@@ -58,6 +64,40 @@ export function AudioPlayer({
     setPos(Math.floor(((e.clientX - rect.left) / rect.width) * duration));
   };
 
+  // Keyboard scrubber — matches native <input type="range"> semantics so
+  // screen-reader + keyboard users can operate the slider as expected.
+  // Left/Right: ±1s. Shift+Left/Right: ±5s. Home/End: jump to start/end.
+  const handleSliderKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const step = e.shiftKey ? 5 : 1;
+    let next = pos;
+    switch (e.key) {
+      case 'ArrowLeft':
+      case 'ArrowDown':
+        next = Math.max(0, pos - step);
+        break;
+      case 'ArrowRight':
+      case 'ArrowUp':
+        next = Math.min(duration, pos + step);
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = duration;
+        break;
+      case 'PageDown':
+        next = Math.max(0, pos - duration * 0.1);
+        break;
+      case 'PageUp':
+        next = Math.min(duration, pos + duration * 0.1);
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+    setPos(Math.floor(next));
+  };
+
   const cycleSpeed = () => {
     setSpeed((s) => (s === 1 ? 1.5 : s === 1.5 ? 2 : 1));
   };
@@ -98,12 +138,15 @@ export function AudioPlayer({
       <div>
         <div
           onClick={handleSeek}
-          className="relative flex h-9 cursor-pointer items-center gap-0.5"
+          onKeyDown={handleSliderKeyDown}
+          tabIndex={0}
+          className="relative flex h-9 cursor-pointer items-center gap-0.5 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-accent"
           role="slider"
           aria-label="Scrub position"
           aria-valuemin={0}
           aria-valuemax={duration}
           aria-valuenow={pos}
+          aria-valuetext={`${fmt(pos)} of ${fmt(duration)}`}
         >
           {waveform.map((v, i) => {
             const h = Math.max(3, v * 36);

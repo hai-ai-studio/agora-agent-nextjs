@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import type { IMicrophoneAudioTrack } from 'agora-rtc-react';
+import { useMenuKeyboardNav } from '@/components/convo-ui';
 
 interface MicrophoneDevice {
   deviceId: string;
@@ -38,6 +39,14 @@ export function MicPicker({ localMicrophoneTrack }: MicPickerProps) {
   const [devices, setDevices] = useState<MicrophoneDevice[]>([]);
   const [currentDeviceId, setCurrentDeviceId] = useState<string>('');
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const handleMenuKeyDown = useMenuKeyboardNav({
+    open,
+    setOpen,
+    menuRef,
+    triggerRef,
+  });
 
   // Re-read the device list and sync `currentDeviceId` against whatever the track is
   // actually using. Browsers fire labels only after mic permission is granted, so this
@@ -138,6 +147,7 @@ export function MicPicker({ localMicrophoneTrack }: MicPickerProps) {
   return (
     <div className="mic-picker relative inline-flex">
       <button
+        ref={triggerRef}
         type="button"
         className="flex h-11 w-5 cursor-pointer items-center justify-center rounded-full border-none bg-transparent text-muted-foreground transition-colors duration-150 hover:bg-black/5 hover:text-foreground"
         onClick={() => setOpen((o) => !o)}
@@ -151,7 +161,9 @@ export function MicPicker({ localMicrophoneTrack }: MicPickerProps) {
       <AnimatePresence>
       {open && (
         <motion.div
+          ref={menuRef}
           role="menu"
+          onKeyDown={handleMenuKeyDown}
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 4 }}
@@ -165,7 +177,8 @@ export function MicPicker({ localMicrophoneTrack }: MicPickerProps) {
             <button
               key={device.deviceId}
               type="button"
-              className={`flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-2 text-left font-ui text-xs transition-colors duration-100 hover:bg-muted ${
+              role="menuitem"
+              className={`flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-2 text-left font-ui text-xs transition-colors duration-100 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none ${
                 device.deviceId === currentDeviceId ? 'text-foreground' : 'text-foreground'
               }`}
               onClick={() => handleChange(device.deviceId)}

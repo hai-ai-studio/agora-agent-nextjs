@@ -90,5 +90,6 @@ export type { AudioPlayerProps } from './AudioPlayer';
 
 // Hooks
 export { useTypewriter } from './hooks/useTypewriter';
+export { useMenuKeyboardNav } from './hooks/useMenuKeyboardNav';
 export { useTypewriterCycle } from './hooks/useTypewriterCycle';
 export type { UseTypewriterCycleOptions } from './hooks/useTypewriterCycle';

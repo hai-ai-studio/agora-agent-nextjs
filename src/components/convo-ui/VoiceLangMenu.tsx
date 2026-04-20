@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import { useMenuKeyboardNav } from './hooks/useMenuKeyboardNav';
 
 // Compact combined voice + language menu. Sits inside the call-dock. Distinct from:
 //  - VoiceGallery → card grid for the voice library page
@@ -73,6 +74,14 @@ export function VoiceLangMenu({
   languages = DEFAULT_LANGS,
 }: VoiceLangMenuProps) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const handleMenuKeyDown = useMenuKeyboardNav({
+    open,
+    setOpen,
+    menuRef,
+    triggerRef,
+  });
   const [internalLang, setInternalLang] = useState<string>(
     languages.find((l) => !l.disabled)?.label ?? languages[0]?.label ?? '',
   );
@@ -107,6 +116,7 @@ export function VoiceLangMenu({
           width; the menu itself is unchanged and `aria-label` keeps the full
           semantic label for screen readers. */}
       <button
+        ref={triggerRef}
         type="button"
         className="flex h-9 w-52 shrink-0 cursor-pointer items-center gap-2 rounded-full border border-border bg-surface/60 px-3.5 font-ui text-xs font-medium text-foreground transition-colors duration-150 hover:border-border dark:bg-surface/10 max-[480px]:w-9 max-[480px]:justify-center max-[480px]:gap-0 max-[480px]:px-0"
         onClick={() => setOpen((o) => !o)}
@@ -129,6 +139,8 @@ export function VoiceLangMenu({
       <AnimatePresence>
         {open && (
           <VoiceMenu
+            menuRef={menuRef}
+            onKeyDown={handleMenuKeyDown}
             voices={voices}
             languages={languages}
             voice={voice}
@@ -144,6 +156,8 @@ export function VoiceLangMenu({
 }
 
 interface VoiceMenuProps {
+  menuRef: RefObject<HTMLDivElement | null>;
+  onKeyDown: (e: KeyboardEvent<HTMLElement>) => void;
   voices: VoiceLangMenuVoice[];
   languages: VoiceLangMenuLang[];
   voice: string;
@@ -159,6 +173,8 @@ const OPT_BASE =
   'flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-2 text-left font-ui text-xs text-foreground transition-colors duration-100 hover:bg-muted disabled:cursor-default disabled:text-muted-foreground disabled:hover:bg-transparent';
 
 function VoiceMenu({
+  menuRef,
+  onKeyDown,
   voices,
   languages,
   voice,
@@ -169,7 +185,9 @@ function VoiceMenu({
 }: VoiceMenuProps) {
   return (
     <motion.div
+      ref={menuRef}
       role="menu"
+      onKeyDown={onKeyDown}
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 4 }}
@@ -183,7 +201,8 @@ function VoiceMenu({
         <button
           key={v.id}
           type="button"
-          className={`${OPT_BASE} ${v.id === voice ? 'text-foreground' : ''}`}
+          role="menuitem"
+          className={`${OPT_BASE} focus-visible:bg-muted focus-visible:outline-none ${v.id === voice ? 'text-foreground' : ''}`}
           disabled={v.disabled}
           aria-disabled={v.disabled}
           onClick={() => {
@@ -208,7 +227,8 @@ function VoiceMenu({
         <button
           key={l.label}
           type="button"
-          className={`${OPT_BASE} ${l.label === lang ? 'text-foreground' : ''}`}
+          role="menuitem"
+          className={`${OPT_BASE} focus-visible:bg-muted focus-visible:outline-none ${l.label === lang ? 'text-foreground' : ''}`}
           disabled={l.disabled}
           aria-disabled={l.disabled}
           onClick={() => {
