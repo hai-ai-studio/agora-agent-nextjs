@@ -226,21 +226,34 @@ export function ConversationVoice({
           minHeight={2}
         />
       </div>
+      {/* Fixed-height caption box. The orb above is centered in its section,
+          so if the caption grew with its content it would push the orb
+          upward every time a new line of speech arrived — reading became a
+          "chasing the orb" experience. Locking height + bottom-aligning the
+          text pins the LATEST words at the bottom of the slot; earlier
+          lines scroll out the top with a soft mask fade. Orb stays still
+          no matter how long Ada talks. */}
       <div
-        className={`min-h-[2.25rem] max-w-2xl px-6 text-center transition-opacity duration-300 ease-voice-out ${
+        className={`flex h-[3.5rem] max-w-2xl flex-col justify-end overflow-hidden px-6 text-center transition-opacity duration-300 ease-voice-out ${
           hasSpeech ? 'opacity-100' : 'opacity-0'
         }`}
+        style={{
+          maskImage:
+            'linear-gradient(to bottom, transparent 0%, black 25%, black 100%)',
+          WebkitMaskImage:
+            'linear-gradient(to bottom, transparent 0%, black 25%, black 100%)',
+        }}
         aria-live="polite"
       >
-        <span className="font-display italic text-lg leading-snug text-foreground [text-wrap:balance]">
+        <div className="font-display italic text-lg leading-snug text-foreground [text-wrap:balance]">
           {speechText || '\u00A0'}
-        </span>
-        {hasSpeech && (
-          <span
-            aria-hidden="true"
-            className="ml-1 inline-block h-[1em] w-[2px] translate-y-[0.1em] bg-voice-b animate-caret-blink"
-          />
-        )}
+          {hasSpeech && (
+            <span
+              aria-hidden="true"
+              className="ml-1 inline-block h-[1em] w-[2px] translate-y-[0.1em] bg-voice-b animate-caret-blink"
+            />
+          )}
+        </div>
       </div>
     </div>
   );
