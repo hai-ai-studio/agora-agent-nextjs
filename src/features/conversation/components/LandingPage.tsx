@@ -8,7 +8,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { Ambient, BrandMark, ErrorToast } from '@/components/convo-ui';
 import { useAgoraSession } from '@/features/conversation/hooks/useAgoraSession';
-import { ADA_AGENT_NAME } from './aria-state';
+import { ADA_AGENT_NAME } from '@/features/conversation/lib/aria-state';
 
 // Dynamically import the ConversationShell with ssr disabled.
 const ConversationShell = dynamic(() => import('./ConversationShell'), {

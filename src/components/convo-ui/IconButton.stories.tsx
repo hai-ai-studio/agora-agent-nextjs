@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { IconButton } from './IconButton';
-import { Icons } from './icons';
+import { Icons } from './Icons';
 
 const meta = {
   title: 'Controls/IconButton',

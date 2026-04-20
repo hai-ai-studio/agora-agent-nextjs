@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import type { AgentShaderVisualizerState } from '@/components/AgentShaderVisualizer';
+import type { AgentShaderVisualizerState } from '@/features/visualizer-lab/components/AgentShaderVisualizer';
 
 // WebGL needs `window`; keep this page client-only.
 const AgentShaderVisualizer = dynamic(
   () =>
-    import('@/components/AgentShaderVisualizer').then(
+    import('@/features/visualizer-lab/components/AgentShaderVisualizer').then(
       (m) => m.AgentShaderVisualizer,
     ),
   { ssr: false },

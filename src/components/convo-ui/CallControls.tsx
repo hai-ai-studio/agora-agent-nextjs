@@ -1,7 +1,7 @@
 'use client';
 
 import { IconButton } from './IconButton';
-import { Icons } from './icons';
+import { Icons } from './Icons';
 
 export interface CallControlsProps {
   muted: boolean;

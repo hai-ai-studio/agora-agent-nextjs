@@ -26,14 +26,14 @@ import { useTokenRefresh } from '@/features/conversation/hooks/useTokenRefresh';
 import {
   Ambient,
   BrandMark,
-  ConnectionStatus,
+  ConnectionIndicator,
   Persona,
   Transcript,
   type TranscriptEntry,
 } from '@/components/convo-ui';
 import { Waveform } from './Waveform';
 import { Controls } from './Controls';
-import { ADA_AGENT_NAME, ARIA_HINT, mapToAriaState, type AriaState } from './aria-state';
+import { ADA_AGENT_NAME, ARIA_HINT, mapToAriaState, type AriaState } from '@/features/conversation/lib/aria-state';
 
 export default function ConversationShell({
   agoraData,
@@ -216,7 +216,7 @@ export default function ConversationShell({
     ? 'grid-cols-[1fr_20rem] gap-6 max-lg:gap-4 max-md:grid-cols-[1fr] max-md:grid-rows-[1fr] max-md:gap-0'
     : 'grid-cols-[1fr_0px] gap-0 max-md:grid-cols-[1fr] max-md:grid-rows-[1fr]';
   // Collapse Agora's DISCONNECTED | CONNECTING | CONNECTED | DISCONNECTING | RECONNECTING
-  // into the ConnectionStatus enum. DISCONNECTING tracks back to 'connecting' since the
+  // into the ConnectionState enum. DISCONNECTING tracks back to 'connecting' since the
   // user's intent there is still "we're mid-flow" rather than a hard error.
   const connectionStatus =
     connectionState === 'CONNECTED'
@@ -284,7 +284,7 @@ export default function ConversationShell({
 
       <header className="relative z-20 flex shrink-0 items-center justify-between px-6 py-3.5 max-lg:px-4 max-lg:py-3">
         <BrandMark agentName={ADA_AGENT_NAME} />
-        <ConnectionStatus status={connectionStatus} />
+        <ConnectionIndicator status={connectionStatus} />
       </header>
 
       <main

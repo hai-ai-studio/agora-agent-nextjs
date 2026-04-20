@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { ConnectionStatus } from './ConnectionStatus';
+import { ConnectionIndicator } from './ConnectionIndicator';
 
 const meta = {
-  title: 'Status/ConnectionStatus',
-  component: ConnectionStatus,
+  title: 'Status/ConnectionIndicator',
+  component: ConnectionIndicator,
   parameters: {
     layout: 'centered',
     docs: {
@@ -21,7 +21,7 @@ const meta = {
     },
     secondary: { control: 'text' },
   },
-} satisfies Meta<typeof ConnectionStatus>;
+} satisfies Meta<typeof ConnectionIndicator>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -47,7 +47,7 @@ export const AllStates: Story = {
   render: () => (
     <div className="flex flex-col gap-4">
       {(['connected', 'connecting', 'reconnecting', 'error'] as const).map((s) => (
-        <ConnectionStatus key={s} status={s} />
+        <ConnectionIndicator key={s} status={s} />
       ))}
     </div>
   ),

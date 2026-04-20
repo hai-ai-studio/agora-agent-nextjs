@@ -42,7 +42,7 @@ const VARIANTS: Record<
   },
 };
 
-export interface ConnectionStatusProps {
+export interface ConnectionIndicatorProps {
   status: ConnectionState;
   /** Override the default label ("Connected" / "Connecting" / etc). */
   label?: string;
@@ -51,11 +51,11 @@ export interface ConnectionStatusProps {
   secondary?: string | false;
 }
 
-export function ConnectionStatus({
+export function ConnectionIndicator({
   status,
   label,
   secondary = 'End-to-end encrypted',
-}: ConnectionStatusProps) {
+}: ConnectionIndicatorProps) {
   const v = VARIANTS[status];
   const displayLabel = label ?? v.label;
 
@@ -79,4 +79,4 @@ export function ConnectionStatus({
   );
 }
 
-export default ConnectionStatus;
+export default ConnectionIndicator;

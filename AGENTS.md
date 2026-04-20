@@ -57,7 +57,7 @@ Include `INTERRUPTED` turns in `messageList` (filter only `IN_PROGRESS`). If the
 
 ### Aria View Layer
 
-The main conversation UI is the editorial "Aria" skin under `src/features/conversation/components/`: `Ambient` (drifting blob background), `Persona` (concentric-ring avatar + status pill + call timer), `Waveform` (two-row SVG bar visualizer, agent + user), `Transcript` (glass side panel with typewriter caret), `Controls` + `VoiceSelector` + `MicPicker` (pill-shaped dock). Aria state enum + mapper + copy constants live in `components/aria-state.ts`.
+The main conversation UI is the editorial "Aria" skin. Presentational components (`Ambient`, `Persona`, `Waveform` variants, `Transcript`, `VoiceSelector`, etc.) live in `src/components/convo-ui/` — see [`docs/guides/CONVO_UI.md`](./docs/guides/CONVO_UI.md). The business shell lives under `src/features/conversation/components/`: `LandingPage`, `ConversationShell`, `Waveform` (Agora audio-track adapter), `Controls` + `MicPicker` (pill-shaped dock). Aria state enum + mapper + copy constants live in `features/conversation/lib/aria-state.ts`.
 
 `ConversationShell` keeps all Agora wiring (hooks, StrictMode guard, `useAgoraVoiceAI`, `useTokenRefresh`) and maps the existing `visualizerState` into Aria's state enum via `mapToAriaState(visualizerState, agentState, isMuted)`.
 
@@ -74,7 +74,7 @@ The main conversation UI is the editorial "Aria" skin under `src/features/conver
 
 Fonts come from `next/font/google` (Inter Tight, Instrument Serif, JetBrains Mono) wired in `src/app/layout.tsx`. The Voice Agent DS additionally loads Geist + Geist Mono on top, exposed as the `font-geist` / `font-geist-mono` utilities — used only by components from the `convo-ui` package and the `/design` catalog.
 
-The shader visualizer (`src/components/AgentShaderVisualizer/`) stays in the codebase but is only rendered at `/lab/visualizer`. It is not used by the main conversation flow.
+The shader visualizer (`src/features/visualizer-lab/components/AgentShaderVisualizer/`) stays in the codebase but is only rendered at `/lab/visualizer`. It is not used by the main conversation flow.
 
 ### Voice Agent Design System (coexists with Aria)
 
@@ -92,7 +92,7 @@ Rule: **new feature UI reaches for `convo-ui` primitives; the existing conversat
 | Toolkit core | `agora-agent-client-toolkit` | `AgoraVoiceAI`, `TurnStatus` enum, `TranscriptHelperItem` types |
 | UI components | `agora-agent-uikit` | Type exports (`AgentVisualizerState`, `IMessageListItem`) consumed by helpers in `src/features/conversation/lib/`. Its runtime components are no longer rendered in the main flow. |
 | View layer | `src/features/conversation/components/` | Ambient, Persona, Waveform, Transcript, Controls, VoiceSelector, MicPicker + aria-state |
-| Visualizer (lab) | `src/components/AgentShaderVisualizer/` | WebGL shader visualizer — `/lab/visualizer` only |
+| Visualizer (lab) | `src/features/visualizer-lab/components/AgentShaderVisualizer/` | WebGL shader visualizer — `/lab/visualizer` only |
 | Design system | `src/components/convo-ui/` | Voice Agent DS primitives (20 components + `useTypewriter` hook) — rendered at `/design` |
 | Server SDK | `agora-agent-server-sdk` | Builder pattern — `AgoraClient` → `Agent` → `session.start()` |
 | Messaging | `agora-rtm` | RTM transport for transcripts |
@@ -115,7 +115,7 @@ Tailwind must scan uikit classes: `./node_modules/agora-agent-uikit/dist/**/*.{j
 | `src/features/conversation/lib/visualizer-state.ts` | `mapAgentVisualizerState` — RTC + agent signals → AgentVisualizerState |
 | `src/features/conversation/lib/agora-config.ts` | `DEFAULT_AGENT_UID` constant |
 | `src/features/conversation/server/invite-agent-config.ts` | `ADA_PROMPT`, `GREETING`, `AGENT_UID` — edit for agent persona |
-| `src/components/AgentShaderVisualizer/` | WebGL shader + FFT hook + palette reader |
+| `src/features/visualizer-lab/components/AgentShaderVisualizer/` | WebGL shader + FFT hook + palette reader |
 | `src/app/lab/visualizer/page.tsx` | Standalone playground for tuning the shader visualizer |
 | `src/app/design/page.tsx` | Voice Agent DS catalog — renders all 18 DS primitives + composition |
 | `src/components/convo-ui/` | Voice Agent DS primitives (canvas + DOM, Tailwind-first) — in-tree, rendered at `/design` |

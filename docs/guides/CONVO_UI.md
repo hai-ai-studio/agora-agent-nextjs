@@ -6,9 +6,9 @@
 
 This doc is the authoritative spec for what belongs in `convo-ui`, which design tokens
 to reach for, and how to add a new component. Architectural rationale lives in
-[ADR 0004](../decisions/0004-semantic-tokens.md) (semantic tokens) —
-[ADR 0003](../decisions/0003-voice-design-system.md) documents the earlier dual-vocab
-phase and is marked Superseded.
+[ADR 0005](../decisions/0005-shadcn-tokens.md) (shadcn-style tokens). ADR 0003
+(dual-vocab) and ADR 0004 (3-tier, 4-foreground) are the superseded intermediate
+steps.
 
 ## 1. Scope
 
@@ -32,62 +32,88 @@ phase and is marked Superseded.
 As a rule: if you can write a Storybook story for it without touching `agora-*`, it goes
 in `convo-ui`. If not, it stays in `features/conversation/`.
 
-## 2. Design tokens — three tiers
+## 2. Design tokens — three tiers (shadcn-style)
 
 All tokens live in [`src/app/globals.css`](../../src/app/globals.css) and are mirrored
-in [`.storybook/preview.css`](../../.storybook/preview.css). The architecture is
-primitive + semantic + brand; **components almost exclusively consume the semantic
-layer**.
+in [`.storybook/preview.css`](../../.storybook/preview.css). The vocabulary is
+**primitive + semantic + brand**, with shadcn's paired-`-foreground` convention at the
+semantic layer.
 
-### Layer 1 — Primitives (fixed, don't flip)
+### Layer 1 — Primitives (fixed scales, don't flip)
 
 | Role          | Tokens              | Tailwind utilities       |
 | ------------- | ------------------- | ------------------------ |
 | Warm neutrals | `--warm-0..11`      | `bg-warm-0`, `text-warm-7`, … |
 | Brand voice   | `--voice-a/b/c`     | `bg-voice-a`, `from-voice-a`, … |
 
-`warm-0..11` is one unified ramp (no more paper/dark split). 0 = lightest, 11 = darkest.
-Primitives are referenced directly only in Foundations catalogs, in components that
-deliberately pin one theme, or when a semantic role doesn't exist.
+Primitives are referenced directly only in Foundations catalogs or when a component is
+intrinsically pinned to one theme (e.g. `LiveSubtitle` is a dark-stage caption, uses
+`bg-warm-7 text-warm-0` so contrast survives regardless of root theme).
 
-### Layer 2 — Semantic roles (flip under `.dark`)
+### Layer 2 — Semantic roles (paired, flip under `.dark`)
 
-| Role group | Tokens |
-| ---------- | ------ |
-| Surfaces | `--background`, `--surface`, `--surface-elevated`, `--surface-sunken` |
-| Foregrounds | `--foreground`, `--foreground-soft`, `--foreground-muted`, `--foreground-subtle` |
-| Borders | `--border`, `--border-strong` |
-| Accent | `--accent` (= `--voice-a`), `--accent-foreground` |
-| State pills | `--state-listen / -think / -speak / -muted / -error` |
-| Intent | `--success`, `--warning`, `--danger`, `--info` |
+Each surface has a companion foreground token. Using the pair (`bg-X` +
+`text-X-foreground`) guarantees WCAG AA contrast at the vocab layer.
 
-Tailwind utilities follow the token names directly: `bg-background`, `text-foreground`,
-`bg-surface-sunken`, `border-border`, `text-state-listen`, `bg-danger`, etc.
+| Pair | Meaning |
+| ---- | ------- |
+| `bg-background` / `text-foreground` | Page |
+| `bg-surface` / `text-surface-foreground` | Cards, raised panels |
+| `bg-surface-elevated` / `text-surface-elevated-foreground` | Popovers, menus |
+| `bg-muted` / `text-muted-foreground` | Quiet bg + secondary text |
+| `bg-accent` / `text-accent-foreground` | Brand action (functional CTA) |
+| `bg-destructive` / `text-destructive-foreground` | Danger action |
 
-**This is what component code should reach for 90%+ of the time.** `.dark` anywhere in
-the ancestor tree flips all semantic values in one pass — components stay clean, no
-`dark:` utility variants needed.
+Stand-alone semantic tokens:
+
+| Tokens | Use |
+| ------ | --- |
+| `--border` | Default hairlines, separators |
+| `--input` | Form field borders (3:1+ non-text AA) |
+| `--ring` | Focus indicator |
+| `--state-listen / -think / -speak / -muted / -error` | Agent state dots + tints |
+| `--success / --warning / --info` | Non-destructive intent colors |
+
+**Text has exactly two levels: `foreground` and `muted-foreground`. Both pass AA
+on every paired surface.** Anything quieter uses Tailwind opacity
+(`text-muted-foreground/60`) and **only for decorative content marked
+`aria-hidden`**. Don't add a third text token — ADR 0005 explains why.
+
+`--accent` is a darker violet (#5a3edb) than `--voice-a` (#7c5cff) — accent carries
+a contrast obligation against `--accent-foreground` (white), voice-a is pure brand
+for gradients / orbs / halos.
 
 ### Layer 3 — Brand (theme-invariant)
 
-`--voice-a/b/c` is also the brand layer: the violet→rose→amber gradient stays constant
-in any theme because it's the product's identity. `--accent` semantic is a one-layer
-alias so components can use `bg-accent` without knowing about voice-a.
+`--voice-a/b/c` — the violet → rose → amber gradient. Identity, not a role. Stays
+constant in any theme.
 
 ### Dark mode
 
-Automatic. The root `.dark` class (flipped by Storybook's theme toolbar, or by user OS
-preference via `@media (prefers-color-scheme: dark)`) re-resolves every semantic token.
+Automatic. The root `.dark` class (Storybook theme toolbar, or OS
+`prefers-color-scheme: dark`) re-resolves every semantic token in one cascade pass.
 Components don't gate on theme, don't import an `isDark` hook, don't write
 `dark:bg-foo`.
 
-**Two edge cases where you do opt in:**
+**Two narrow escape hatches:**
 
-1. **Intentionally pinned surface** — a subtree that should always render in dark (or
-   always in light) regardless of root theme. Wrap in `<div className="dark">` or the
-   equivalent; semantic tokens inside resolve to the pinned theme.
-2. **A literal color that has no semantic analog** — rare. Example: a very specific
-   marketing gradient. Document the exception at the call site.
+1. **Intentionally pinned surface** — a subtree that must stay in one theme
+   regardless of root. Wrap in `<div className="dark">` or consume primitives
+   directly (`bg-warm-7 text-warm-0`). `LiveSubtitle` is the reference example.
+2. **A literal color that has no semantic analog** — rare marketing / illustration
+   colors. Document the exception at the call site.
+
+### a11y as a CI gate
+
+`preview.ts` has `a11y: { test: 'error' }`. Every story runs axe on every render
+via `@storybook/addon-vitest`; color-contrast / nested-interactive / other WCAG
+violations fail `pnpm test`. Two narrow per-story opt-outs:
+
+- `aria-hidden="true"` on decorative elements (live-indicator `●` dots paired
+  with text labels, bullet separators, watermarks)
+- `parameters: { a11y: { test: 'off' } }` on interaction-test stories where axe
+  snapshots a transient mid-animation frame. The base visual story for the same
+  component still carries the audit.
 
 ## 3. Typography — three families
 
@@ -120,10 +146,10 @@ behavior is the catalog itself.
 ### Waveforms — `BarsWave`, `LinearWave`, `CircleWave`
 Three waveform styles. SVG-based, no audio graph required.
 
-### Status — `StatusIndicator`, `LatencyIndicator`, `ConnectionStatus`, `ErrorToast`
+### Status — `StatusIndicator`, `LatencyIndicator`, `ConnectionIndicator`, `ErrorToast`
 - `StatusIndicator`: breathing-dot pill for the 6-state state enum.
 - `LatencyIndicator`: ms + quality signal.
-- `ConnectionStatus`: header connection signal with secondary-badge slot.
+- `ConnectionIndicator`: header connection signal with secondary-badge slot.
 - `ErrorToast`: fixed-position `role="alert"` banner.
 
 ### Controls — `IconButton`, `CallControls`, `BigCallButton`, `VoiceSelector`, `Icons`
@@ -262,7 +288,7 @@ presentational, promote it:
 5. Delete the original file.
 
 `Ambient`, `Persona`, `Transcript`, `VoiceSelector` (and later `BrandMark`,
-`ConnectionStatus`, `ErrorToast`) were promoted this way; treat them as worked examples.
+`ConnectionIndicator`, `ErrorToast`) were promoted this way; treat them as worked examples.
 
 ## 9. Non-goals
 

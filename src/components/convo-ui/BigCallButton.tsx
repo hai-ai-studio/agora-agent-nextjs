@@ -1,6 +1,6 @@
 'use client';
 
-import { Icons } from './icons';
+import { Icons } from './Icons';
 
 export type BigCallButtonState = 'idle' | 'ringing' | 'active';
 

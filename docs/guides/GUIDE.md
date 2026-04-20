@@ -1067,7 +1067,7 @@ Rather than building custom microphone buttons and audio visualizers from scratc
 
 - **`agora-agent-uikit`** — pre-built components: `MicButtonWithVisualizer`, `ConvoTextStream`, and (as a fallback) `AgentVisualizer`
 - **`agora-agent-client-toolkit`** — `AgoraVoiceAI` class that subscribes to RTM transcript events and emits transcript, state, and error events
-- **`components/AgentShaderVisualizer/`** — the default agent-state UI in this quickstart. A tiny WebGL fragment shader that taps each speaker's `MediaStreamTrack` for real-time FFT and deforms with the audio. The uikit's `AgentVisualizer` is kept as an opt-out fallback (`NEXT_PUBLIC_SHADER_VIZ=0`).
+- **`features/visualizer-lab/components/AgentShaderVisualizer/`** — the default agent-state UI in this quickstart. A tiny WebGL fragment shader that taps each speaker's `MediaStreamTrack` for real-time FFT and deforms with the audio. The uikit's `AgentVisualizer` is kept as an opt-out fallback (`NEXT_PUBLIC_SHADER_VIZ=0`).
 
 Both packages are already installed. Now we'll wire them into the `ConversationComponent`.
 
@@ -1128,7 +1128,7 @@ import {
   type IMessageListItem,
 } from 'agora-agent-uikit';
 import { MicButtonWithVisualizer } from 'agora-agent-uikit/rtc';
-import { AgentShaderVisualizer } from '@/components/AgentShaderVisualizer';
+import { AgentShaderVisualizer } from '@/features/visualizer-lab/components/AgentShaderVisualizer';
 import { Button } from '@/components/ui/button';
 import { DEFAULT_AGENT_UID } from '@/lib/agora';
 import { MicrophoneSelector } from './MicrophoneSelector';
@@ -1497,7 +1497,7 @@ export default function ConversationComponent({
 
 | Component                 | Import                                    | Description                                                                                                                   |
 | ------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `AgentShaderVisualizer`   | `@/components/AgentShaderVisualizer`      | **Default.** Audio-reactive WebGL visualizer driven by `visualizerState` + FFT bands of the active speaker's `MediaStreamTrack`. |
+| `AgentShaderVisualizer`   | `@/features/visualizer-lab/components/AgentShaderVisualizer`      | **Default.** Audio-reactive WebGL visualizer driven by `visualizerState` + FFT bands of the active speaker's `MediaStreamTrack`. |
 | `AgentVisualizer`         | `agora-agent-uikit`                       | Lottie fallback used when `NEXT_PUBLIC_SHADER_VIZ=0`.                                                                         |
 | `ConvoTextStream`         | `agora-agent-uikit`                       | Floating chat panel showing live and completed transcript turns                                                               |
 | `MicButtonWithVisualizer` | `agora-agent-uikit/rtc`                   | Mic button with built-in Web Audio visualization                                                                              |

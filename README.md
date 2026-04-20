@@ -80,9 +80,9 @@ This is a **pnpm workspace**. The Next.js quickstart lives at the root; the Voic
 - `src/features/conversation/components/LandingPage.tsx` editorial pre-call screen; delegates orchestration to `useAgoraSession`
 - `src/features/conversation/components/ConversationShell.tsx` Agora RTC hooks + Aria layout
 - `src/features/conversation/hooks/` `useStrictModeReady`, `useAgoraVoiceAI`, `useTokenRefresh`, `useAgoraSession`
-- `src/features/conversation/components/` Aria view layer — `Ambient`, `Persona`, `Waveform`, `Transcript`, `Controls`, `VoiceSelector`, `MicPicker` (plus `aria-state.ts` for the view-state enum + copy)
+- `src/features/conversation/components/` Aria shell — `LandingPage`, `ConversationShell`, `Waveform`, `Controls`, `MicPicker`. View-state enum + copy in `lib/aria-state.ts`.
 - `src/features/conversation/server/invite-agent-config.ts` system prompt + greeting (edit to change persona)
-- `src/components/AgentShaderVisualizer/` WebGL-shader visualizer used by the `/lab/visualizer` playground
+- `src/features/visualizer-lab/components/AgentShaderVisualizer/` WebGL-shader visualizer used by the `/lab/visualizer` playground
 - `src/app/lab/visualizer/` standalone page for tuning the shader visualizer
 - `src/app/design/` Voice Agent DS catalog (`/design`)
 

@@ -8,7 +8,7 @@ import { Ambient } from './Ambient';
 import { BrandMark } from './BrandMark';
 import { BargeInIndicator } from './BargeInIndicator';
 import { CallControls } from './CallControls';
-import { ConnectionStatus } from './ConnectionStatus';
+import { ConnectionIndicator } from './ConnectionIndicator';
 import { LanguagePicker } from './LanguagePicker';
 import { LatencyIndicator } from './LatencyIndicator';
 import { Persona, type PersonaState } from './Persona';
@@ -225,7 +225,7 @@ function FullConsoleRender() {
     <div className="mx-auto w-full max-w-7xl bg-background px-10 py-10 font-ui text-foreground">
       <div className="mb-4 flex items-center justify-between">
         <BrandMark agentName="Ada" />
-        <ConnectionStatus status="connected" />
+        <ConnectionIndicator status="connected" />
       </div>
       <div className="rounded-3xl border border-border bg-muted p-7 shadow-md">
         <div className="grid h-[40rem] grid-cols-[minmax(15rem,17.5rem)_minmax(26.25rem,1fr)_minmax(17.5rem,20rem)] gap-5">

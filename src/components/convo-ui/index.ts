@@ -23,8 +23,8 @@ export { StatusIndicator } from './StatusIndicator';
 export type { StatusIndicatorProps, StatusState } from './StatusIndicator';
 export { LatencyIndicator } from './LatencyIndicator';
 export type { LatencyIndicatorProps } from './LatencyIndicator';
-export { ConnectionStatus } from './ConnectionStatus';
-export type { ConnectionStatusProps, ConnectionState } from './ConnectionStatus';
+export { ConnectionIndicator } from './ConnectionIndicator';
+export type { ConnectionIndicatorProps, ConnectionState } from './ConnectionIndicator';
 export { ErrorToast } from './ErrorToast';
 export type { ErrorToastProps } from './ErrorToast';
 
@@ -33,8 +33,8 @@ export { BrandMark } from './BrandMark';
 export type { BrandMarkProps } from './BrandMark';
 
 // Controls
-export { Icons } from './icons';
-export type { IconName } from './icons';
+export { Icons } from './Icons';
+export type { IconName } from './Icons';
 export { IconButton } from './IconButton';
 export type { IconButtonProps, IconButtonVariant } from './IconButton';
 export { CallControls } from './CallControls';

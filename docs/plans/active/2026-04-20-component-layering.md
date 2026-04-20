@@ -74,7 +74,7 @@
 
 已全部扫过，**无业务耦合违规**。分布：
 
-- **L1 纯展示（17）**：`IconButton`, `CallControls`, `BrandMark`, `BargeInIndicator`, `StatusIndicator`, `ConnectionStatus`, `LatencyIndicator`, `ErrorToast`, `BigCallButton`, `MicPermissionCard`, `VoiceCard`, `SessionList`, `ToolCallCard`, `AgentConfigCard`, `LiveSubtitle`, `TranscriptBubble`, `icons`
+- **L1 纯展示（17）**：`IconButton`, `CallControls`, `BrandMark`, `BargeInIndicator`, `StatusIndicator`, `ConnectionIndicator`, `LatencyIndicator`, `ErrorToast`, `BigCallButton`, `MicPermissionCard`, `VoiceCard`, `SessionList`, `ToolCallCard`, `AgentConfigCard`, `LiveSubtitle`, `TranscriptBubble`, `Icons`
 - **L2 有 UI 状态（6）**：`VoicePicker`, `VoiceSelector`, `LanguagePicker`, `AudioPlayer`, `Persona`（含 call timer）, `BarsWave`（RAF 动画帧）
 - **L2 RAF-only（4）**：`VoiceOrb`, `LinearWave`, `CircleWave`, `Transcript`（自动滚动 effect）
 - **Ambient**：用了 `useSyncExternalStore` 订阅 `prefers-color-scheme`——属 L2，合规（订阅的是 CSS 媒体查询，不是 IO）。
@@ -89,7 +89,7 @@
 | ----------------------- | -------------- | -------- | ------------------------------------------------------------------------------- |
 | `LandingPage.tsx`       | L4             | ✅       | 编排 `useAgoraSession` + 渲染 Ambient/BrandMark/ErrorToast。无视觉逻辑内联。    |
 | `ConversationShell.tsx` | L4             | ⚠️       | 编排部分合规，但内联了 `transcriptCardBody` JSX + 移动端 sheet + 40 行 motion 代码，混了 L3 的职责。 |
-| `Controls.tsx`          | L3（应为）     | ❌       | 自绘三个 SVG 图标、自定义 `DOCK_PILL`/`CTRL_BTN`/`CTRL_ACTIVE` 样式常量——**这些都是 L1 `CallControls` + `IconButton` + `icons` 已有的东西**，属于平行重造。 |
+| `Controls.tsx`          | L3（应为）     | ❌       | 自绘三个 SVG 图标、自定义 `DOCK_PILL`/`CTRL_BTN`/`CTRL_ACTIVE` 样式常量——**这些都是 L1 `CallControls` + `IconButton` + `Icons` 已有的东西**，属于平行重造。 |
 | `Waveform.tsx`          | L3（应为）     | ❌       | 250 行里绝大部分是视觉决策：48-bar shaping、center-mirror envelope、state→颜色 映射、activeOpacity。convo-ui 已有 `BarsWave`，但没用。 |
 | `MicPicker.tsx`         | L3             | ⚠️       | 职责合规（设备 API → 列表），但内联了 chevron 图标 + popover 样式。popover 行为和 L2 的 `VoiceSelector`/`LanguagePicker` 重复。 |
 | `aria-state.ts`         | 非组件         | ❌       | 文件就是类型 + pure function + 常量，**放在 `components/` 下是位置错误**，应迁到 `lib/`。 |

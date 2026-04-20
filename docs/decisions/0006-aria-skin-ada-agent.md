@@ -10,7 +10,7 @@ The editorial view layer was ported from an external reference HTML file named "
 
 The agent itself has a personality, a system prompt, a greeting line. As the project evolved, the agent name was renamed to "Ada" for branding reasons (not the design, which retained "Aria" as the name of the port). This created ambiguity:
 
-- "Aria" in `components/aria-state.ts` → design skin.
+- "Aria" in `lib/aria-state.ts` → design skin.
 - "Ada" in greeting / status pill / transcript labels → agent.
 
 ## Decision
@@ -37,8 +37,8 @@ Split the two usages cleanly:
 
 | Surface | Name | File |
 |---|---|---|
-| State enum, mapper, copy constants | `Aria*` | `src/features/conversation/components/aria-state.ts` |
-| Agent display name constant | `ADA_AGENT_NAME` | `src/features/conversation/components/aria-state.ts` (exported alongside the skin types because it's the content the skin displays) |
+| State enum, mapper, copy constants | `Aria*` | `src/features/conversation/lib/aria-state.ts` |
+| Agent display name constant | `ADA_AGENT_NAME` | `src/features/conversation/lib/aria-state.ts` (exported alongside the skin types because it's the content the skin displays) |
 | Design tokens | `--ink`, `--bg`, `--wf-agent`, `--pill-*` | `src/app/globals.css` |
 | Brand mark in top-bar | renders `Ada · Agora` | `LandingPage.tsx`, `ConversationShell.tsx` |
 | System prompt / greeting | `ADA_PROMPT`, `GREETING` | `src/features/conversation/server/invite-agent-config.ts` |

@@ -37,14 +37,9 @@ src/
       components/
         LandingPage.tsx                — editorial pre-call screen; delegates orchestration to useAgoraSession
         ConversationShell.tsx          — in-call container; owns Agora RTC hooks, renders Aria layout
-        Ambient.tsx                    — drifting blob background + grain
-        Persona.tsx                    — concentric-ring avatar, status pill, call timer
         Waveform.tsx                   — SVG bar visualizer (two rows: agent + user), fluid width
-        Transcript.tsx                 — glass side panel, bubbles + typewriter caret
         Controls.tsx                   — pill dock: voice, mic, transcript toggle, end-call
-        VoiceSelector.tsx              — voice + language popover (UI only, not wired to backend yet)
         MicPicker.tsx                  — device picker popover (hot-swap via AgoraRTC.onMicrophoneChanged)
-        aria-state.ts                  — AriaState enum + mapToAriaState + ADA_AGENT_NAME + ARIA_HINT copy
       hooks/
         useStrictModeReady.ts          — setTimeout(fn,0) StrictMode guard
         useAgoraVoiceAI.ts             — toolkit init + transcript/agent state + RTM error stream
@@ -52,6 +47,7 @@ src/
         useAgoraSession.ts             — token fetch + agent invite + RTM lifecycle
         useAudioFFT.ts                 — MediaStreamTrack → bass/mid/treble band averages (shared by Waveform + lab shader)
       lib/
+        aria-state.ts                  — AriaState enum + mapToAriaState + ADA_AGENT_NAME + ARIA_HINT copy
         transcript.ts                  — pure helpers: normalizeTranscript, getMessageList,
                                          getCurrentInProgressMessage, normalizeTimestampMs,
                                          toMessageListItem, normalizeTranscriptSpacing
@@ -61,17 +57,19 @@ src/
         invite-agent-config.ts         — ADA_PROMPT, GREETING, AGENT_UID (imported by invite-agent route)
       types.ts                         — AgoraTokenData, ClientStartRequest, AgentResponse,
                                          ConversationComponentProps, StopConversationRequest
+    visualizer-lab/
+      components/
+        AgentShaderVisualizer/         — WebGL shader visualizer used at /lab/visualizer only
+          index.tsx · gl.ts · shader.ts
 
   components/
     ErrorBoundary.tsx                  — last-resort recovery UI for the in-call tree
     LoadingSkeleton.tsx                — Suspense fallback for the lazy-loaded ConversationShell
-    AgentShaderVisualizer/             — WebGL shader visualizer used at /lab/visualizer only
-      index.tsx · gl.ts · shader.ts
-    convo-ui/                          — Voice Agent Design System (20 components, rendered at /design)
+    convo-ui/                          — Voice Agent Design System (28 components, rendered at /design)
       *.tsx                            — each component one file
       *.stories.tsx                    — co-located Storybook 10 stories (CSF 4 format)
       hooks/useTypewriter.ts           — progressive-reveal helper
-      icons.tsx                        — inline SVG icon set
+      Icons.tsx                        — inline SVG icon set
       index.ts                         — barrel re-export
     ui/
       button.tsx                       — shadcn button (consumed by ErrorBoundary)
@@ -233,7 +231,7 @@ Core real-time component. Must be inside `AgoraRTCProvider`.
 **View layer (Aria):**
 
 - `Persona`, `Waveform`, `Transcript`, `Controls`, `VoiceSelector`, `MicPicker`, `Ambient` directly under `src/features/conversation/components/`. No uikit runtime component is rendered.
-- State mapping: `mapToAriaState(visualizerState, agentState, isMuted)` from `components/aria-state.ts` collapses `AgentVisualizerState` + agent state + local mute into Aria's 8-state enum (`connecting` / `preparing` / `idle` / `listening` / `thinking` / `speaking` / `muted` / `error`).
+- State mapping: `mapToAriaState(visualizerState, agentState, isMuted)` from `lib/aria-state.ts` collapses `AgentVisualizerState` + agent state + local mute into Aria's 8-state enum (`connecting` / `preparing` / `idle` / `listening` / `thinking` / `speaking` / `muted` / `error`).
 - Transcript data comes from `messageList` + `currentInProgressMessage` mapped into `{ speaker, text, key }` where `key = ${uid}-${turn_id}` (turn_id is per-speaker, not globally unique).
 
 **Shader visualizer (lab-only):**

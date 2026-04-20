@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAudioFFT } from '@/features/conversation/hooks/useAudioFFT';
-import type { AriaState } from './aria-state';
+import type { AriaState } from '@/features/conversation/lib/aria-state';
 
 // useState initializer runs once at mount and is the sanctioned place for Math.random —
 // useRef's initializer runs every render, which React 19 flags as impure.

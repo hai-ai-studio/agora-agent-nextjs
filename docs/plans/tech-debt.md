@@ -12,11 +12,11 @@
 - ~~`VoiceMenu` / `MicPicker` popovers anchor `left: 0` — clip viewport edge on narrow screens.~~ `max-sm:right-0` + `max-w-[calc(100vw-2rem)]` 2026-04-20 (responsive Phase 1).
 - ~~Mobile transcript row is 120-200px tall — too short to be readable.~~ Fixed bottom sheet at `max-md`, default-hidden 2026-04-20 (responsive Phase 3).
 - ~~`useAudioFFT` lives in `src/features/conversation/lib/audio.ts` but is a hook.~~ Moved to `src/features/conversation/hooks/useAudioFFT.ts` 2026-04-20.
-- `mapAgentVisualizerState` (`lib/visualizer-state.ts`) and `mapToAriaState` (`components/aria-state.ts`) are the two halves of the same RTC-signal-to-view-state pipeline but live in different folders.
+- ~~`mapAgentVisualizerState` (`lib/visualizer-state.ts`) and `mapToAriaState` (`components/aria-state.ts`) are the two halves of the same RTC-signal-to-view-state pipeline but live in different folders.~~ Resolved 2026-04-20 — `aria-state.ts` moved to `features/conversation/lib/` so both halves are co-located in `lib/`.
 - ~~`src/hooks/use-mobile.tsx` contains no JSX; rename to `.ts`.~~ Hook removed from tree entirely 2026-04-20 (wasn't referenced).
-- ~~`src/features/visualizer-lab/components/AgentShaderVisualizer/` — hollow feature nesting.~~ Flattened to `src/components/AgentShaderVisualizer/` 2026-04-20.
+- ~~`src/features/visualizer-lab/components/AgentShaderVisualizer/` — hollow feature nesting.~~ Moved to `src/components/` then back to `src/features/visualizer-lab/components/` during the 2026-04-20 layering pass — it's /lab-only, not a shared DS primitive.
 - `src/features/conversation/lib/agora-config.ts` contains a single `DEFAULT_AGENT_UID = 123456` constant. Could fold into `types.ts` or a shared constants module.
-- `--foreground-subtle` (#a7a7ac on #fafaf7) lands at 2.1:1 contrast — below WCAG AA 4.5:1 for text. Blocks flipping `preview.ts`'s `a11y.test` from `'todo'` → `'error'` (fails ~36 stories today). Decide: retire the subtle level and collapse into `foreground-muted`, or formally restrict `foreground-subtle` to decorative / non-text uses. Either needs a sweep over current usages.
+- ~~`--foreground-subtle` (#a7a7ac on #fafaf7) lands at 2.1:1 contrast — below WCAG AA 4.5:1 for text. Blocks flipping `preview.ts`'s `a11y.test` from `'todo'` → `'error'`.~~ **Resolved 2026-04-20** — ADR 0005 collapsed to shadcn-style 2 text levels (`foreground` + `muted-foreground`, both AA). `a11y.test: 'error'` gates CI as of this refactor.
 
 ## Boundaries / validation
 
