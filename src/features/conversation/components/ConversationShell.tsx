@@ -33,7 +33,7 @@ import {
   useIsMobile,
   type TranscriptEntry,
 } from '@/components/convo-ui';
-import { Waveform } from './Waveform';
+import { ConversationVoice } from './ConversationVoice';
 import { Controls } from './Controls';
 import { ADA_AGENT_NAME, VIEW_HINT, mapToViewState, type ViewState } from '@/features/conversation/lib/view-state';
 
@@ -281,31 +281,11 @@ export default function ConversationShell({
         <section className="flex min-h-0 flex-col items-center justify-center gap-[clamp(16px,3vh,32px)] overflow-auto px-0 py-2 pb-4">
           <Persona state={viewState} name={ADA_AGENT_NAME} hint={VIEW_HINT[viewState]} />
 
-          <div className="w-full max-w-3xl overflow-hidden rounded-3xl border border-border bg-surface/40 px-6 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.02),_0_20px_50px_rgba(0,0,0,0.05)] backdrop-blur-xl supports-[backdrop-filter]:bg-surface/40 max-lg:px-5 max-lg:py-3 max-sm:rounded-2xl max-sm:px-4 max-sm:py-2.5 2xl:max-w-4xl">
-            <div className="flex items-center gap-4">
-              <div className="w-11 shrink-0 font-display text-base italic text-muted-foreground">
-                {ADA_AGENT_NAME}
-              </div>
-              <Waveform
-                state={viewState}
-                variant="agent"
-                height={140}
-                audioTrack={agentMediaTrack}
-              />
-            </div>
-            <div className="my-2 h-px bg-border max-sm:my-1" />
-            <div className="flex items-center gap-4">
-              <div className="w-11 shrink-0 font-display text-base italic text-muted-foreground">
-                You
-              </div>
-              <Waveform
-                state={viewState}
-                variant="user"
-                height={140}
-                audioTrack={userMediaTrack}
-              />
-            </div>
-          </div>
+          <ConversationVoice
+            state={viewState}
+            agentTrack={agentMediaTrack}
+            userTrack={userMediaTrack}
+          />
 
           {/* Hidden RemoteUser mounts keep agent audio subscribed — critical, don't remove. */}
           {remoteUsers.map((user) => (

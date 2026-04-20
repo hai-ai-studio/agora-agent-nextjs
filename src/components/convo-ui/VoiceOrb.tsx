@@ -14,6 +14,21 @@ export interface VoiceOrbProps {
   size?: number;
   /** Target amplitude in [0, 1]. Drives blob deformation for listening/speaking. */
   amplitude?: number;
+  /**
+   * Hot-path alternative to `amplitude`. When provided, VoiceOrb's RAF loop
+   * calls this each frame instead of reading the `amplitude` prop — so the
+   * caller can drive audio-reactive amplitude without triggering a React
+   * re-render per frame. Keep the callback identity stable (useCallback) so
+   * the effect doesn't re-subscribe on every render.
+   *
+   * ```tsx
+   * const getAmp = useCallback(() => max(bandsRef.current) * smoothedGain, []);
+   * <VoiceOrb state="speaking" getAmplitude={getAmp} />
+   * ```
+   *
+   * Takes precedence over `amplitude` when both are passed.
+   */
+  getAmplitude?: () => number;
   ariaLabel?: string;
 }
 
@@ -29,6 +44,7 @@ export function VoiceOrb({
   state = 'idle',
   size = 120,
   amplitude = 0.5,
+  getAmplitude,
   ariaLabel = 'Voice orb',
 }: VoiceOrbProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -37,6 +53,7 @@ export function VoiceOrb({
   // restarting. Restarting the loop on every prop change would cost a canvas re-scale.
   const stateRef = useRef(state);
   const ampRef = useRef(amplitude);
+  const getAmpRef = useRef(getAmplitude);
 
   useEffect(() => {
     stateRef.current = state;
@@ -44,6 +61,9 @@ export function VoiceOrb({
   useEffect(() => {
     ampRef.current = amplitude;
   }, [amplitude]);
+  useEffect(() => {
+    getAmpRef.current = getAmplitude;
+  }, [getAmplitude]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -60,7 +80,9 @@ export function VoiceOrb({
     const draw = () => {
       t += 0.016;
       const st = stateRef.current;
-      const amp = ampRef.current;
+      // getAmplitude callback takes precedence — lets the caller drive
+      // audio-reactive amplitude per frame without re-rendering React.
+      const amp = getAmpRef.current ? getAmpRef.current() : ampRef.current;
       ctx.clearRect(0, 0, size, size);
       const cx = size / 2;
       const cy = size / 2;
