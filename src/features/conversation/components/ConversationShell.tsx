@@ -27,6 +27,7 @@ import {
   Ambient,
   BrandMark,
   ConnectionIndicator,
+  Icons,
   Persona,
   Transcript,
   type TranscriptEntry,
@@ -242,25 +243,12 @@ export default function ConversationShell({
           </div>
           <button
             type="button"
-            className="flex size-6 cursor-pointer items-center justify-center rounded-full border-none bg-transparent text-muted-foreground transition-colors duration-150 hover:bg-black/5 hover:text-foreground"
+            className="flex size-6 cursor-pointer items-center justify-center rounded-full border-none bg-transparent text-muted-foreground transition-colors duration-150 hover:bg-black/5 hover:text-foreground [&>svg]:size-3.5"
             onClick={() => setIsTranscriptVisible(false)}
             aria-label="Hide transcript"
             title="Hide transcript"
           >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            {Icons.close}
           </button>
         </div>
       </div>

@@ -1,72 +1,8 @@
 'use client';
 
 import type { IMicrophoneAudioTrack } from 'agora-rtc-react';
-import { VoiceLangMenu } from '@/components/convo-ui';
+import { Icons, VoiceLangMenu } from '@/components/convo-ui';
 import { MicPicker } from './MicPicker';
-function IconMic({ muted }: { muted: boolean }) {
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="9" y="3" width="6" height="12" rx="3" />
-      <path d="M5 11a7 7 0 0 0 14 0" />
-      <line x1="12" y1="18" x2="12" y2="22" />
-      {muted && <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" strokeWidth="2" />}
-    </svg>
-  );
-}
-
-function IconEnd() {
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path
-        d="M3 10.5a12 12 0 0 1 18 0v2.3a1.5 1.5 0 0 1-1 1.4l-3 1a1.5 1.5 0 0 1-1.8-.9l-.7-2a1.5 1.5 0 0 0-1.1-1 10 10 0 0 0-3.8 0 1.5 1.5 0 0 0-1.1 1l-.7 2A1.5 1.5 0 0 1 6.5 15l-3-1a1.5 1.5 0 0 1-1-1.4z"
-        transform="rotate(135 12 12)"
-      />
-    </svg>
-  );
-}
-
-// "CC" caption glyph — reads as "transcript / live captions" which is what the side panel is.
-function IconCaptions() {
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="M7 11h2" />
-      <path d="M7 15h2" />
-      <path d="M13 11h4" />
-      <path d="M13 15h4" />
-    </svg>
-  );
-}
 
 export interface ControlsProps {
   muted: boolean;
@@ -123,7 +59,7 @@ export function Controls({
           aria-label={muted ? 'Unmute microphone' : 'Mute microphone'}
           aria-pressed={muted}
         >
-          <IconMic muted={muted} />
+          {muted ? Icons.micOff : Icons.mic}
         </button>
         <MicPicker localMicrophoneTrack={localMicrophoneTrack} />
       </div>
@@ -137,7 +73,7 @@ export function Controls({
           aria-label={transcriptVisible ? 'Hide transcript' : 'Show transcript'}
           aria-pressed={transcriptVisible}
         >
-          <IconCaptions />
+          {Icons.captions}
         </button>
       )}
 
@@ -148,7 +84,7 @@ export function Controls({
         title="End call"
         aria-label="End call"
       >
-        <IconEnd />
+        {Icons.hangup}
       </button>
     </div>
   );

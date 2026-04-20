@@ -1,6 +1,15 @@
 export interface LiveSubtitleProps {
   text: string;
   speaker?: 'agent' | 'user';
+  /**
+   * Agent display name rendered in the speaker-tag row. Defaults to `'Ada'`
+   * (the quickstart's demo agent). Override to match your product's voice.
+   */
+  agentName?: string;
+  /**
+   * Local user label for the speaker-tag row. Defaults to `'You'`.
+   */
+  userLabel?: string;
 }
 
 /**
@@ -13,6 +22,8 @@ export interface LiveSubtitleProps {
 export function LiveSubtitle({
   text,
   speaker = 'agent',
+  agentName = 'Ada',
+  userLabel = 'You',
 }: LiveSubtitleProps) {
   return (
     <div className="max-w-[35rem] rounded-2xl bg-warm-7 px-5 py-3.5 text-center text-[17px] leading-snug tracking-[-0.01em] text-warm-0 shadow-lg backdrop-blur-xl">
@@ -21,7 +32,7 @@ export function LiveSubtitle({
           speaker === 'agent' ? 'text-voice-b' : 'text-warm-2'
         }`}
       >
-        {speaker === 'agent' ? 'Ada' : 'You'}
+        {speaker === 'agent' ? agentName : userLabel}
       </div>
       <div className="[text-wrap:balance]">
         {text}

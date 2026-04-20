@@ -33,6 +33,7 @@ export function LanguagePicker({
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (!open) return;
     const h = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
@@ -40,7 +41,7 @@ export function LanguagePicker({
     };
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
-  }, []);
+  }, [open]);
 
   const current = LANGS.find((l) => l.code === sel) ?? LANGS[0];
 

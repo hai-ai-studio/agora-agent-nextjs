@@ -90,6 +90,43 @@ export const Icons = {
       />
     </>,
   ),
+  captions: s(
+    <>
+      <rect
+        x="3"
+        y="5"
+        width="18"
+        height="14"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M7 11h2M7 15h2M13 11h4M13 15h4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </>,
+  ),
+  chevronUp: s(
+    <polyline
+      points="18 15 12 9 6 15"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />,
+  ),
+  close: s(
+    <path
+      d="M18 6 6 18M6 6l12 12"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />,
+  ),
 } as const;
 
 export type IconName = keyof typeof Icons;

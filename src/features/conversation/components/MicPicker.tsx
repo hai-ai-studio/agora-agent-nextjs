@@ -3,29 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import type { IMicrophoneAudioTrack } from 'agora-rtc-react';
-import { useMenuKeyboardNav } from '@/components/convo-ui';
+import { Icons, useMenuKeyboardNav } from '@/components/convo-ui';
 
 interface MicrophoneDevice {
   deviceId: string;
   label: string;
-}
-
-function IconChevronUp() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <polyline points="18 15 12 9 6 15" />
-    </svg>
-  );
 }
 
 export interface MicPickerProps {
@@ -156,7 +138,7 @@ export function MicPicker({ localMicrophoneTrack }: MicPickerProps) {
         aria-label="Select microphone"
         title="Select microphone"
       >
-        <IconChevronUp />
+        <span className="[&>svg]:size-3">{Icons.chevronUp}</span>
       </button>
       <AnimatePresence>
       {open && (
