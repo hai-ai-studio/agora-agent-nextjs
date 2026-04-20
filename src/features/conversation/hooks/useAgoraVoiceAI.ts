@@ -76,6 +76,12 @@ interface UseAgoraVoiceAIParams {
 interface UseAgoraVoiceAIResult {
   rawTranscript: TranscriptItem[];
   agentState: AgentState | null;
+  /**
+   * Most recent end-to-end latency in milliseconds, emitted by the toolkit
+   * when a turn finishes. `null` before any turn completes. Refreshes on
+   * each subsequent turn.
+   */
+  e2eLatencyMs: number | null;
 }
 
 // Owns the AgoraVoiceAI toolkit lifecycle: init on `enabled`, wire up transcript + agent
@@ -89,6 +95,7 @@ export function useAgoraVoiceAI({
 }: UseAgoraVoiceAIParams): UseAgoraVoiceAIResult {
   const [rawTranscript, setRawTranscript] = useState<TranscriptItem[]>([]);
   const [agentState, setAgentState] = useState<AgentState | null>(null);
+  const [e2eLatencyMs, setE2eLatencyMs] = useState<number | null>(null);
   const [, setConnectionIssues] = useState<ConnectionIssue[]>([]);
 
   const addConnectionIssue = useCallback((issue: ConnectionIssue) => {
@@ -136,6 +143,17 @@ export function useAgoraVoiceAI({
         ai.on(AgoraVoiceAIEvents.AGENT_STATE_CHANGED, (_, event) =>
           setAgentState(event.state),
         );
+        // Latency metrics — the toolkit emits per-metric events; we surface
+        // only the end-to-end one (the number the user cares about). Other
+        // segmented metrics (asr_ttlw, llm_ttft, tts_ttfb, etc.) are
+        // ignored. Name match is case-insensitive + substring to be robust
+        // against minor naming variations across toolkit versions.
+        ai.on(AgoraVoiceAIEvents.AGENT_METRICS, (_, metric) => {
+          const n = metric.name?.toLowerCase() ?? '';
+          if (n.includes('e2e') || n.includes('end_to_end') || n.includes('end-to-end')) {
+            setE2eLatencyMs(Math.round(metric.value));
+          }
+        });
         ai.on(AgoraVoiceAIEvents.MESSAGE_ERROR, (agentUserId, error) => {
           addConnectionIssue({
             id: `${Date.now()}-${agentUserId}-message-error-${error.code}`,
@@ -252,5 +270,5 @@ export function useAgoraVoiceAI({
     };
   }, [rtmClient, addConnectionIssue]);
 
-  return { rawTranscript, agentState };
+  return { rawTranscript, agentState, e2eLatencyMs };
 }

@@ -27,7 +27,7 @@ import {
   BrandMark,
   ConnectionIndicator,
   Icons,
-  Persona,
+  LatencyIndicator,
   Transcript,
   useIsMobile,
   type TranscriptEntry,
@@ -90,12 +90,23 @@ export default function ConversationShell({
     }
   }, [client]);
 
-  const { rawTranscript, agentState } = useAgoraVoiceAI({
+  const { rawTranscript, agentState, e2eLatencyMs } = useAgoraVoiceAI({
     client,
     rtmClient,
     channel: agoraData.channel,
     enabled: isReady && joinSuccess,
   });
+
+  // Call duration timer — starts ticking on mount. ConversationShell remounts
+  // on reconnect (see parent's `showConversation` gating), so the timer
+  // naturally resets per session without a manual key reset.
+  const [callSecs, setCallSecs] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setCallSecs((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const callMinutes = String(Math.floor(callSecs / 60)).padStart(2, '0');
+  const callSeconds = String(callSecs % 60).padStart(2, '0');
 
   // The toolkit uses uid="0" for local user speech — remap to actual RTC UID
   // so ConvoTextStream renders user messages on the correct side.
@@ -283,24 +294,37 @@ export default function ConversationShell({
     >
       <Ambient state={viewState} />
 
-      <header className="relative z-20 flex shrink-0 items-center justify-between px-6 py-3.5 max-lg:px-4 max-lg:py-3">
+      <header className="relative z-20 flex shrink-0 items-center justify-between gap-4 px-6 py-3.5 max-lg:px-4 max-lg:py-3">
         <BrandMark agentName={ADA_AGENT_NAME} />
-        <ConnectionIndicator status={connectionStatus} />
+        {/* Compact status strip — absorbed what used to live in the Persona
+            card (call timer) plus net-quality signal (latency) plus the
+            existing transport state. Small mono font, muted, dense so it
+            reads as instrument-row infrastructure rather than UI chrome. */}
+        <div className="flex items-center gap-3 font-mono text-[11px] text-muted-foreground">
+          <span className="tabular-nums" aria-label="Call duration">
+            {callMinutes}:{callSeconds}
+          </span>
+          {e2eLatencyMs !== null && (
+            <>
+              <span className="text-border max-sm:hidden">·</span>
+              <span className="max-sm:hidden">
+                <LatencyIndicator ms={e2eLatencyMs} />
+              </span>
+            </>
+          )}
+          <span className="text-border">·</span>
+          <ConnectionIndicator status={connectionStatus} secondary={false} />
+        </div>
       </header>
 
       <main
         className={`relative z-10 grid min-h-0 items-stretch px-6 transition-[grid-template-columns,grid-template-rows,gap] duration-300 ease-voice-out max-lg:px-4 ${stageGridClass}`}
       >
-        {/* justify-start on mobile so Persona + orb sit higher in the viewport
-            (not centered), matching the "don't cover the orb" request. Desktop
-            keeps justify-center for the hero composition. */}
-        <section className="flex min-h-0 flex-col items-center justify-center gap-[clamp(16px,3vh,32px)] overflow-auto px-0 py-2 pb-4 max-md:justify-start max-md:gap-4 max-md:pt-4">
-          {/* `hint` intentionally not passed — the activeSpeech line under the
-              orb now carries the "what's happening right now" signal, so
-              Persona stays tight at 2 lines (name + pill/timer). Keeps the
-              persona card from visually competing with the orb. */}
-          <Persona state={viewState} name={ADA_AGENT_NAME} />
-
+        {/* Persona card retired: the orb now conveys state (via color +
+            motion), the header strip carries timer / latency / connection,
+            and the caption under the orb handles the live speech. Section
+            layout centers the orb on desktop and top-aligns on mobile. */}
+        <section className="flex min-h-0 flex-col items-center justify-center gap-[clamp(16px,3vh,32px)] overflow-auto px-0 py-2 pb-4 max-md:justify-start max-md:gap-4 max-md:pt-6">
           <ConversationVoice
             state={viewState}
             agentTrack={agentMediaTrack}
