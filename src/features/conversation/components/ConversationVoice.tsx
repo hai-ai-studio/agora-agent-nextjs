@@ -188,7 +188,6 @@ export function ConversationVoice({
         window.clearTimeout(speechHideTimer.current);
         speechHideTimer.current = null;
       }
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPersistedSpeech(incoming);
       return;
     }
@@ -221,23 +220,49 @@ export function ConversationVoice({
   const hasSpeech = speechText.trim().length > 0;
   const words = displayed?.words ?? null;
 
-  // Karaoke-style word highlight. The toolkit hands us per-word start_ms
-  // timestamps synced with TTS playback, so we can light up whichever word
-  // "now" falls inside. Only available for agent turns (ASR doesn't publish
-  // word timings) — user turns render as plain text. RAF loop updates state
-  // only on index change to avoid per-frame re-renders while holding on a
-  // single word.
+  // Karaoke-style word highlight. The toolkit's `start_ms` is the server-
+  // side TTS timestamp, which lands on the user's browser 200-600ms ahead
+  // of the actual audio (network + RTC jitter buffer + decoder). Comparing
+  // raw `Date.now()` to `start_ms` makes the highlight race ahead of the
+  // voice.
+  //
+  // Fix: anchor to the moment the user actually HEARS speech, detected via
+  // the agent FFT energy crossing threshold. Once anchored, offset = T_hear
+  // − F_firstWord; subsequent word boundaries advance at the same pace as
+  // real time, so the relative timing between words stays tight.
+  //
+  // Anchor resets on every new turn (new `words` identity). Until anchored
+  // we hold on idx=-1 (no highlight) — waiting a frame or two for audio to
+  // start is better than flashing through words ahead of the voice.
   const [activeWordIdx, setActiveWordIdx] = useState(-1);
+  const anchorOffsetRef = useRef<number | null>(null);
+  const AUDIO_ANCHOR_THRESHOLD = 0.14;
   useEffect(() => {
+    anchorOffsetRef.current = null; // new turn: re-anchor
     let raf = 0;
     let prevIdx = -1;
     const tick = () => {
       let idx = -1;
       if (words && words.length > 0) {
-        const now = Date.now();
-        for (let i = 0; i < words.length; i++) {
-          if (words[i].start_ms <= now) idx = i;
-          else break;
+        // Before the anchor is set, sniff agent FFT energy each frame; first
+        // frame above threshold anchors us to the current local time.
+        if (anchorOffsetRef.current === null) {
+          const b = agentBandsRef.current;
+          const energy = Math.max(b.bass, b.mid, b.treble);
+          if (energy > AUDIO_ANCHOR_THRESHOLD) {
+            anchorOffsetRef.current = Date.now() - words[0].start_ms;
+          }
+        }
+        const offset = anchorOffsetRef.current;
+        // Only produce a real highlight once we've anchored. Pre-anchor
+        // frames keep idx=-1 so the caption shows faded-upcoming style
+        // rather than jumping ahead of the audio.
+        if (offset !== null) {
+          const adjustedNow = Date.now() - offset;
+          for (let i = 0; i < words.length; i++) {
+            if (words[i].start_ms <= adjustedNow) idx = i;
+            else break;
+          }
         }
       }
       if (idx !== prevIdx) {
@@ -248,6 +273,8 @@ export function ConversationVoice({
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
+    // bandsRef is stable; intentionally omitted.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [words]);
 
   return (
