@@ -15,7 +15,6 @@ import {
 import { DEFAULT_AGENT_UID } from '@/features/conversation/lib/agora-config';
 import {
   getMessageList,
-  getPriorityInProgressMessage,
   normalizeTranscript,
 } from '@/features/conversation/lib/transcript';
 import { mapAgentVisualizerState } from '@/features/conversation/lib/visualizer-state';
@@ -109,14 +108,25 @@ export default function ConversationShell({
   // if the agent's first turn is cut off, messageList stays empty and ConvoTextStream never auto-opens.
   const messageList = useMemo(() => getMessageList(transcript), [transcript]);
 
-  // Live partial turn — rendered under the hero orb and inside the side
-  // panel's typing caret. Prefers the user's UID so barge-in flips the
-  // displayed speech to the interrupter instead of latching onto the
-  // agent's already-playing turn.
-  const currentInProgressMessage = useMemo(
-    () => getPriorityInProgressMessage(transcript, String(client.uid)),
-    [transcript, client.uid],
-  );
+  // Live caption source — the most recent transcript entry, regardless of
+  // status. In practice the Agora toolkit only surfaces turns to us once
+  // they complete (status=END) rather than during streaming, so filtering
+  // on IN_PROGRESS always produced an empty result. Using "latest turn"
+  // gives us "what was most recently said" which matches what the user
+  // wants to see in the hero caption: their utterance once captured, and
+  // Ada's full response once it arrives.
+  const currentInProgressMessage = useMemo(() => {
+    const last = transcript[transcript.length - 1];
+    if (!last || typeof last.text !== 'string' || !last.text.trim()) {
+      return null;
+    }
+    return {
+      turn_id: last.turn_id,
+      uid: Number(last.uid) || 0,
+      text: last.text,
+      status: last.status,
+    };
+  }, [transcript]);
 
   // Publish local mic once the track exists; usePublish waits for RTC connection.
   usePublish([localMicrophoneTrack]);
