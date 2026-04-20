@@ -143,14 +143,23 @@ export function useAgoraVoiceAI({
         ai.on(AgoraVoiceAIEvents.AGENT_STATE_CHANGED, (_, event) =>
           setAgentState(event.state),
         );
-        // Latency metrics — the toolkit emits per-metric events; we surface
-        // only the end-to-end one (the number the user cares about). Other
-        // segmented metrics (asr_ttlw, llm_ttft, tts_ttfb, etc.) are
-        // ignored. Name match is case-insensitive + substring to be robust
-        // against minor naming variations across toolkit versions.
+        // Latency metrics — toolkit fires this per metric per turn. Log
+        // everything we see so the name filter can be tuned to the actual
+        // event vocabulary. Once confirmed, narrow the filter and drop the
+        // log.
         ai.on(AgoraVoiceAIEvents.AGENT_METRICS, (_, metric) => {
+          console.log('[DEBUG agent-metric]', {
+            type: metric.type,
+            name: metric.name,
+            value: metric.value,
+          });
           const n = metric.name?.toLowerCase() ?? '';
-          if (n.includes('e2e') || n.includes('end_to_end') || n.includes('end-to-end')) {
+          if (
+            n.includes('e2e') ||
+            n.includes('end_to_end') ||
+            n.includes('end-to-end') ||
+            n === 'latency'
+          ) {
             setE2eLatencyMs(Math.round(metric.value));
           }
         });

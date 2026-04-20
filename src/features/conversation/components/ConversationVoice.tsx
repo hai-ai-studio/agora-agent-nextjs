@@ -226,23 +226,16 @@ export function ConversationVoice({
           minHeight={2}
         />
       </div>
-      {/* Fixed-height caption box. The orb above is centered in its section,
-          so if the caption grew with its content it would push the orb
-          upward every time a new line of speech arrived — reading became a
-          "chasing the orb" experience. Locking height + bottom-aligning the
-          text pins the LATEST words at the bottom of the slot; earlier
-          lines scroll out the top with a soft mask fade. Orb stays still
-          no matter how long Ada talks. */}
+      {/* Reserved 3-line-tall invisible rectangle. Nothing visual on the box
+          itself — the height is the only thing it contributes, so the orb
+          above stays at a stable position regardless of caption length.
+          Most speech fits in 2-3 lines; longer messages overflow-clip at
+          the bottom. Text flows naturally top-to-bottom — no mask, no
+          bottom-align trickery. Keeping the visual simple. */}
       <div
-        className={`flex h-[3.5rem] max-w-2xl flex-col justify-end overflow-hidden px-6 text-center transition-opacity duration-300 ease-voice-out ${
+        className={`h-[4.75rem] max-w-2xl overflow-hidden px-6 text-center transition-opacity duration-300 ease-voice-out ${
           hasSpeech ? 'opacity-100' : 'opacity-0'
         }`}
-        style={{
-          maskImage:
-            'linear-gradient(to bottom, transparent 0%, black 25%, black 100%)',
-          WebkitMaskImage:
-            'linear-gradient(to bottom, transparent 0%, black 25%, black 100%)',
-        }}
         aria-live="polite"
       >
         <div className="font-display italic text-lg leading-snug text-foreground [text-wrap:balance]">
