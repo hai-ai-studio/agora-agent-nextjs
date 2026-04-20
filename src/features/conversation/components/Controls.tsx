@@ -93,12 +93,12 @@ const CTRL_BTN =
 // win over these in the generated CSS depending on Tailwind class emit order.
 const CTRL_ACTIVE = '!bg-foreground !text-accent-foreground hover:!bg-foreground/90';
 
-// End-call variant — red fill, darker red on hover. Both `!bg-*` importance flags are
-// required: without them, `bg-transparent` / `hover:bg-black/5` from CTRL_BTN can win in
-// the cascade depending on Tailwind class emit order, making the hangup button render
-// transparent or gray instead of the expected red.
+// End-call variant — red fill, white icon, darker red on hover. All color
+// utilities need `!` importance: without it, `bg-transparent` / `text-foreground`
+// / `hover:bg-black/5` from CTRL_BTN can win in the Tailwind class emit order,
+// making the hangup button render transparent, with a dark icon, or gray on hover.
 const CTRL_END =
-  '!bg-[#dc2626] text-accent-foreground hover:!bg-[#b91c1c]';
+  '!bg-[#dc2626] !text-white hover:!bg-[#b91c1c]';
 
 export function Controls({
   muted,

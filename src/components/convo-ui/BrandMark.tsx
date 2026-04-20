@@ -1,13 +1,17 @@
 'use client';
 
-// Brand mark — round ink chip with concentric-circle glyph, followed by an italic serif
-// label of the form "<Agent> · <Product>". Used as the top-left header of landing +
-// conversation screens so both views share one recognizable signature.
+// Brand mark — round ink chip with concentric-circle glyph, followed by an italic
+// serif label. Two shapes:
+//   - "Agora"              (no agentName — used pre-call, when the agent is still
+//                           hypothetical and the hero positions "your agent")
+//   - "Ada · Agora"        (agentName provided — used in-call, when the user is
+//                           actually talking to a named agent)
+// Landing + conversation screens share the glyph so the visual signature is stable.
 
 export interface BrandMarkProps {
-  /** Agent display name (first label segment). */
+  /** Agent display name. When omitted, renders just the product (no separator). */
   agentName?: string;
-  /** Product / host name (second label segment, muted). */
+  /** Product / host name. Always shown. */
   productName?: string;
   /** Diameter of the round ink chip in px. Default 32. */
   size?: number;
@@ -16,7 +20,7 @@ export interface BrandMarkProps {
 }
 
 export function BrandMark({
-  agentName = 'Ada',
+  agentName,
   productName = 'Agora',
   size = 32,
   labelSize = 'lg',
@@ -53,9 +57,15 @@ export function BrandMark({
         </svg>
       </div>
       <span className={`font-display italic tracking-[-0.01em] ${labelClass}`}>
-        {agentName}
-        <span className="text-muted-foreground"> · </span>
-        <span className="text-muted-foreground">{productName}</span>
+        {agentName ? (
+          <>
+            {agentName}
+            <span className="text-muted-foreground"> · </span>
+            <span className="text-muted-foreground">{productName}</span>
+          </>
+        ) : (
+          productName
+        )}
       </span>
     </div>
   );
