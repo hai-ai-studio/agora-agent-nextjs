@@ -86,13 +86,12 @@ export function VoiceOrb({
       ctx.clearRect(0, 0, size, size);
       const cx = size / 2;
       const cy = size / 2;
-      // Base radius is the orb's plumpness at rest — larger value = fuller
-      // orb, smaller halo ring around it. Bumped from 0.32 to 0.40 so the orb
-      // reads as a confident filled shape rather than a small disc floating
-      // in a big halo. Pulses with amplitude for the "breathe with voice"
-      // effect — 7% range keeps the pulse visible without making the orb
-      // clip past the container at peak speech.
-      const baseR = size * 0.4 * (1 + amp * 0.07);
+      // Base radius is the orb's plumpness — a compromise between "fuller
+      // shape" and "halos have room to render without clipping". At 0.36 the
+      // orb core takes ~72% of the canvas diameter; the remaining 28% is
+      // breathing room for halos + peak deformation + the mask feather. Pulses
+      // with amplitude for the "breathe with voice" effect.
+      const baseR = size * 0.36 * (1 + amp * 0.07);
 
       // Glow halo layers — more layers when active (listening/speaking).
       const glowCount = st === 'speaking' ? 3 : st === 'listening' ? 2 : 1;

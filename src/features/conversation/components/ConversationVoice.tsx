@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { BarsWave, VoiceOrb } from '@/components/convo-ui';
 import { useAudioFFT } from '@/features/conversation/hooks/useAudioFFT';
 import type { ViewState } from '@/features/conversation/lib/view-state';
@@ -36,7 +36,11 @@ export interface ConversationVoiceProps {
   agentTrack?: MediaStreamTrack | null;
   /** Local mic track. Drives the orb when `state === 'listening'` and always feeds the mic strip. */
   userTrack?: MediaStreamTrack | null;
-  /** Orb diameter in px. Default 180. */
+  /** Orb canvas diameter in px. Default 220. The orb core occupies roughly
+   *  the inner 72% of this (baseR ratio inside VoiceOrb); the rest is breathing
+   *  room for halos + deformation so the visible shape never presses against
+   *  the mask edge. Bumping this grows the halo field; the orb core stays a
+   *  similar size. */
   orbSize?: number;
   /**
    * Currently-streaming speech to show under the mic strip. `text` is the
@@ -68,7 +72,7 @@ export function ConversationVoice({
   state,
   agentTrack = null,
   userTrack = null,
-  orbSize = 180,
+  orbSize = 220,
   activeSpeech = null,
   agentName = 'Ada',
 }: ConversationVoiceProps) {
@@ -144,13 +148,58 @@ export function ConversationVoice({
   const micVisible = state !== 'muted' && state !== 'error';
   const micProminent = state === 'listening' || state === 'idle';
 
-  // Live speech caption — single line under the mic strip. Only visible when
-  // something is streaming; keeps a fixed min-height so the orb above doesn't
-  // shift when speech toggles on/off. Prefix label distinguishes user (green)
-  // from agent (ink) so the reader knows at a glance who's speaking.
-  const speechText = activeSpeech?.text?.trim() ?? '';
+  // Live speech caption — single line under the mic strip.
+  //
+  // Persistence: when the streaming message ends (activeSpeech → null), the
+  // user's last utterance lingers on screen for SPEECH_LINGER_MS before
+  // fading. Without this, the caption disappears the instant the user stops
+  // talking and the user can't tell whether "what I said" was captured
+  // correctly. The lingering copy is purely visual — the history panel owns
+  // the permanent record.
+  const SPEECH_LINGER_MS = 2800;
+  const [persistedSpeech, setPersistedSpeech] = useState<
+    { text: string; speaker: 'agent' | 'user' } | null
+  >(null);
+  const speechHideTimer = useRef<number | null>(null);
+
+  // Mirror activeSpeech into persistedSpeech with a linger-on-null delay.
+  // The "set-state-in-effect" rule exists to prevent cascade-render loops,
+  // but here the cascade IS intentional: when upstream speech changes we
+  // want to re-render the caption. The linger timer can't be derived from
+  // props alone — it's genuinely stateful.
+  useEffect(() => {
+    const incoming = activeSpeech?.text?.trim() ? activeSpeech : null;
+    if (incoming) {
+      if (speechHideTimer.current !== null) {
+        window.clearTimeout(speechHideTimer.current);
+        speechHideTimer.current = null;
+      }
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPersistedSpeech(incoming);
+      return;
+    }
+    // Upstream says speech ended. If we're currently showing something,
+    // start the linger timer so the last utterance stays readable before
+    // fading.
+    if (persistedSpeech && speechHideTimer.current === null) {
+      speechHideTimer.current = window.setTimeout(() => {
+        setPersistedSpeech(null);
+        speechHideTimer.current = null;
+      }, SPEECH_LINGER_MS);
+    }
+    return () => {
+      // Cancel pending hide on unmount or when activeSpeech changes again
+      // before the timer fires.
+      if (speechHideTimer.current !== null) {
+        window.clearTimeout(speechHideTimer.current);
+        speechHideTimer.current = null;
+      }
+    };
+  }, [activeSpeech, persistedSpeech]);
+
+  const speechText = persistedSpeech?.text ?? '';
   const hasSpeech = speechText.length > 0;
-  const speechSpeaker = activeSpeech?.speaker ?? 'agent';
+  const speechSpeaker = persistedSpeech?.speaker ?? 'agent';
   const speakerLabel = speechSpeaker === 'user' ? 'You' : agentName;
   const speakerColor =
     speechSpeaker === 'user' ? 'text-[#16a34a]' : 'text-foreground';
@@ -179,7 +228,7 @@ export function ConversationVoice({
         />
       </div>
       <div
-        className={`min-h-[1.75rem] max-w-xl px-6 text-center transition-opacity duration-200 ${
+        className={`min-h-[2.25rem] max-w-2xl px-6 text-center transition-opacity duration-300 ease-voice-out ${
           hasSpeech ? 'opacity-100' : 'opacity-0'
         }`}
         aria-live="polite"
@@ -189,7 +238,7 @@ export function ConversationVoice({
         >
           {speakerLabel}
         </span>
-        <span className="font-display italic text-base leading-snug text-muted-foreground [text-wrap:balance]">
+        <span className="font-display italic text-lg leading-snug text-foreground [text-wrap:balance]">
           {speechText || '\u00A0'}
         </span>
       </div>
