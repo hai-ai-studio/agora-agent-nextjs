@@ -197,9 +197,15 @@ export function ConversationVoice({
     };
   }, [activeSpeech, persistedSpeech]);
 
-  const speechText = persistedSpeech?.text ?? '';
-  const hasSpeech = speechText.length > 0;
-  const speechSpeaker = persistedSpeech?.speaker ?? 'agent';
+  // Render source: prefer activeSpeech when upstream has live text — that way
+  // the caption appears immediately, without waiting for the mirror effect to
+  // set persistedSpeech on the next tick. persistedSpeech only kicks in when
+  // activeSpeech is empty (i.e. the linger window, after speech ends).
+  const liveText = activeSpeech?.text?.trim() ?? '';
+  const displayed = liveText.length > 0 ? activeSpeech : persistedSpeech;
+  const speechText = displayed?.text ?? '';
+  const hasSpeech = speechText.trim().length > 0;
+  const speechSpeaker = displayed?.speaker ?? 'agent';
   const speakerLabel = speechSpeaker === 'user' ? 'You' : agentName;
   const speakerColor =
     speechSpeaker === 'user' ? 'text-[#16a34a]' : 'text-foreground';
