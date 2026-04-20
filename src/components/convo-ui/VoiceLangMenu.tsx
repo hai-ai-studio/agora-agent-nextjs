@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
+import { useState, type KeyboardEvent, type RefObject } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useMenuKeyboardNav } from './hooks/useMenuKeyboardNav';
+import { usePopover } from './hooks/usePopover';
 
 // Compact combined voice + language menu. Sits inside the call-dock. Distinct from:
 //  - VoiceGallery → card grid for the voice library page
@@ -73,15 +73,8 @@ export function VoiceLangMenu({
   voices = DEFAULT_VOICES,
   languages = DEFAULT_LANGS,
 }: VoiceLangMenuProps) {
-  const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const handleMenuKeyDown = useMenuKeyboardNav({
-    open,
-    setOpen,
-    menuRef,
-    triggerRef,
-  });
+  const { open, setOpen, triggerRef, menuRef, handleMenuKeyDown } =
+    usePopover<HTMLButtonElement, HTMLDivElement>();
   const [internalLang, setInternalLang] = useState<string>(
     languages.find((l) => !l.disabled)?.label ?? languages[0]?.label ?? '',
   );
@@ -90,20 +83,6 @@ export function VoiceLangMenu({
     if (onLanguageChange) onLanguageChange(next);
     else setInternalLang(next);
   };
-  // Per-instance DOM-scoping class so the outside-click handler only closes THIS menu
-  // when multiple VoiceLangMenus sit on the same page.
-  const reactId = useId();
-  const scopeClass = `voice-lang-menu-${reactId.replace(/:/g, '')}`;
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (!target?.closest(`.${scopeClass}`)) setOpen(false);
-    };
-    document.addEventListener('click', handler);
-    return () => document.removeEventListener('click', handler);
-  }, [open, scopeClass]);
 
   const current =
     voices.find((v) => v.id === voice && !v.disabled) ??
@@ -111,7 +90,7 @@ export function VoiceLangMenu({
     voices[0];
 
   return (
-    <div className={`${scopeClass} relative mr-1 shrink-0`}>
+    <div className="relative mr-1 shrink-0">
       {/* Below 480px the trigger collapses to a 36×36 ink-dot pill to reclaim dock
           width; the menu itself is unchanged and `aria-label` keeps the full
           semantic label for screen readers. */}

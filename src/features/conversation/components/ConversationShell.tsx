@@ -30,6 +30,7 @@ import {
   Icons,
   Persona,
   Transcript,
+  useIsMobile,
   type TranscriptEntry,
 } from '@/components/convo-ui';
 import { Waveform } from './Waveform';
@@ -47,15 +48,13 @@ export default function ConversationShell({
   const [isEnabled, setIsEnabled] = useState(true);
   // Voice + language selectors are UI-only in V1 — shown in the dock but not yet wired to /api/invite-agent.
   const [voice, setVoice] = useState('ada');
-  // Transcript panel: visible by default on desktop so first-time users see the live turns, but
-  // hidden by default on phones (matching Tailwind `md` = 768px) — at that viewport it becomes
-  // a full bottom sheet and opening it by default would eat the whole screen before the user
-  // has seen the persona. Safe to read `window` in the initializer: this component is
-  // dynamic-imported with ssr:false.
-  const [isTranscriptVisible, setIsTranscriptVisible] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    return !window.matchMedia('(max-width: 767px)').matches;
-  });
+  // Transcript panel: visible by default on desktop so first-time users see the live turns,
+  // but hidden by default on phones (matching Tailwind `md` = 768px) — at that viewport it
+  // becomes a full bottom sheet and opening it by default would eat the whole screen before
+  // the user has seen the persona. Only the initial value depends on viewport; after mount,
+  // the user's manual toggles win (resizing across the breakpoint mid-call doesn't override).
+  const isMobile = useIsMobile();
+  const [isTranscriptVisible, setIsTranscriptVisible] = useState(!isMobile);
 
   // Tracks granular RTC connection state for the status dot.
   // Agora states: DISCONNECTED | CONNECTING | CONNECTED | DISCONNECTING | RECONNECTING

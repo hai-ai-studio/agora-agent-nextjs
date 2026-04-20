@@ -1,7 +1,8 @@
 'use client';
 
 import { motion, useReducedMotion } from 'motion/react';
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useIsDark as useSystemDark } from './hooks/useMediaQuery';
 
 // Drifting radial blobs + SVG grain overlay. Pure decoration — no layout, no interaction.
 // The `state` prop tints one of three blobs per state; unspecified states fall through to
@@ -73,23 +74,11 @@ const BLOB_CONFIG: BlobPosition[] = [
   { size: 420, top: '40%', left: '55%', driftX: [0, -50, 0], driftY: [0, 20, 0], duration: 34 },
 ];
 
-// SSR returns false (server has no OS preference). Client re-subscribes on mount via
-// useSyncExternalStore, so dark users see a brief light flash that swaps once the media
-// query reports — acceptable for a decorative layer.
-function subscribeDarkMedia(onChange: () => void) {
-  const media = window.matchMedia('(prefers-color-scheme: dark)');
-  media.addEventListener('change', onChange);
-  return () => media.removeEventListener('change', onChange);
-}
-function getDarkMediaMatches() {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches;
-}
+// `forceDark` overrides the system media query. Dark users see a brief light
+// flash during SSR hydration (server returns false since there's no OS
+// preference available) — acceptable for a decorative layer.
 function useIsDark(forceDark?: boolean) {
-  const systemDark = useSyncExternalStore(
-    subscribeDarkMedia,
-    getDarkMediaMatches,
-    () => false,
-  );
+  const systemDark = useSystemDark();
   return forceDark ?? systemDark;
 }
 

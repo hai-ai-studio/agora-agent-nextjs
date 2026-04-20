@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import type { IMicrophoneAudioTrack } from 'agora-rtc-react';
-import { Icons, useMenuKeyboardNav } from '@/components/convo-ui';
+import { Icons, usePopover } from '@/components/convo-ui';
 
 interface MicrophoneDevice {
   deviceId: string;
@@ -20,15 +20,8 @@ export interface MicPickerProps {
 export function MicPicker({ localMicrophoneTrack }: MicPickerProps) {
   const [devices, setDevices] = useState<MicrophoneDevice[]>([]);
   const [currentDeviceId, setCurrentDeviceId] = useState<string>('');
-  const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const handleMenuKeyDown = useMenuKeyboardNav({
-    open,
-    setOpen,
-    menuRef,
-    triggerRef,
-  });
+  const { open, setOpen, triggerRef, menuRef, handleMenuKeyDown } =
+    usePopover<HTMLButtonElement, HTMLDivElement>();
 
   // Re-read the device list and sync `currentDeviceId` against whatever the track is
   // actually using. Browsers fire labels only after mic permission is granted, so this
@@ -101,17 +94,6 @@ export function MicPicker({ localMicrophoneTrack }: MicPickerProps) {
     };
   }, [localMicrophoneTrack, refreshDevices]);
 
-  // Close when a click lands outside the popover — matches the VoiceLangMenu pattern.
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (!target?.closest('.mic-picker')) setOpen(false);
-    };
-    document.addEventListener('click', handler);
-    return () => document.removeEventListener('click', handler);
-  }, [open]);
-
   const handleChange = async (deviceId: string) => {
     if (!localMicrophoneTrack) return;
     try {
@@ -127,7 +109,7 @@ export function MicPicker({ localMicrophoneTrack }: MicPickerProps) {
   if (devices.length <= 1) return null;
 
   return (
-    <div className="mic-picker relative inline-flex">
+    <div className="relative inline-flex">
       <button
         ref={triggerRef}
         type="button"

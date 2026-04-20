@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { useClickOutside } from './hooks/useClickOutside';
 
 export interface LanguagePickerProps {
   selected?: string;
@@ -19,9 +20,8 @@ export const LANGS = [
 ] as const;
 
 /**
- * LanguagePicker — dropdown showing flag + locale label + regional accent. Uses the same
- * click-outside pattern as VoiceLangMenu / MicPicker: one ref on the container,
- * a document-level mousedown listener, unregister on close. `popover` isn't used (still
+ * LanguagePicker — dropdown showing flag + locale label + regional accent.
+ * Outside-click dismissal via `useClickOutside`. `popover` isn't used (still
  * patchy browser support for the HTML popover API + positioning nuances).
  */
 export function LanguagePicker({
@@ -31,17 +31,8 @@ export function LanguagePicker({
   const [open, setOpen] = useState(false);
   const [sel, setSel] = useState(selected);
   const ref = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [open]);
+  const close = useCallback(() => setOpen(false), []);
+  useClickOutside(ref, open, close);
 
   const current = LANGS.find((l) => l.code === sel) ?? LANGS[0];
 

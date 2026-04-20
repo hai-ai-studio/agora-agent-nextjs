@@ -91,5 +91,13 @@ export type { AudioPlayerProps } from './AudioPlayer';
 // Hooks
 export { useTypewriter } from './hooks/useTypewriter';
 export { useMenuKeyboardNav } from './hooks/useMenuKeyboardNav';
+export { useClickOutside } from './hooks/useClickOutside';
+export {
+  useMediaQuery,
+  useIsDark,
+  useIsMobile,
+} from './hooks/useMediaQuery';
+export { usePopover } from './hooks/usePopover';
+export type { UsePopoverResult } from './hooks/usePopover';
 export { useTypewriterCycle } from './hooks/useTypewriterCycle';
 export type { UseTypewriterCycleOptions } from './hooks/useTypewriterCycle';
