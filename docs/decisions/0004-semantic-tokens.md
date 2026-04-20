@@ -1,7 +1,7 @@
 # 0004 — Three-tier semantic tokens, one vocabulary
 
 - Date: 2026-04-20
-- Status: Accepted
+- Status: Superseded by [0005 — shadcn-style tokens](./0005-shadcn-tokens.md)
 - Supersedes: [0003](./0003-voice-design-system.md)
 
 ## Context
