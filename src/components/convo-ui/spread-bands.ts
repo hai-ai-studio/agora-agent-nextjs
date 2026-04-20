@@ -51,14 +51,16 @@ export interface SpreadBandsOptions {
  * spectrum-analyser layout. Bass dominates the center, treble the edges, mid
  * bridges between. Optional per-bar sparkle + center envelope add visual life.
  *
- * Returns a plain number[] with values in [0, 1], ready to feed into BarsWave's
- * `values` prop (BarsWave handles attack/release smoothing on top).
+ * Pass `out` (a Float32Array or number[] of length `barCount`) to write results
+ * into a caller-owned buffer — avoids per-frame allocation on hot paths.
+ * Omit `out` and a fresh `number[]` is returned.
  */
-export function spreadBandsToBarValues(
+export function spreadBandsToBarValues<T extends number[] | Float32Array = number[]>(
   bands: { bass: number; mid: number; treble: number },
   barCount: number,
   options: SpreadBandsOptions = {},
-): number[] {
+  out?: T,
+): T {
   const {
     seeds,
     t = 0,
@@ -79,7 +81,8 @@ export function spreadBandsToBarValues(
   const mid = shape(gate(bands.mid));
   const treble = shape(gate(bands.treble));
 
-  const values = new Array<number>(barCount);
+  const values: number[] | Float32Array =
+    out ?? (new Array<number>(barCount) as number[]);
   for (let i = 0; i < barCount; i++) {
     const phase = i / barCount;
     // 0 at center, 1 at edges — used both for band weighting and the envelope.
@@ -106,5 +109,5 @@ export function spreadBandsToBarValues(
 
     values[i] = Math.min(1, raw * env);
   }
-  return values;
+  return values as T;
 }

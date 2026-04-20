@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { BarsWave } from './BarsWave';
 import { spreadBandsToBarValues } from './spread-bands';
 
@@ -7,7 +7,7 @@ const COMPONENT_DOC = `
 Meter-style waveform — the bar-graph visualization of voice activity. Two
 modes of operation:
 
-### Synth mode _(default, no \`values\` prop)_
+### Synth mode _(default, no \`getTargets\`)_
 
 Runs a built-in sine + noise animation. Good for decorative placeholders,
 idle/thinking states, or anywhere you don't have a real audio source to
@@ -17,16 +17,21 @@ drive. Controlled by \`bars\`, \`amplitude\`, \`active\`.
 <BarsWave bars={32} amplitude={0.8} />
 \`\`\`
 
-### Driven mode _(pass \`values={[0..1, ...]}\`)_
+### Driven mode _(pass \`getTargets\` callback)_
 
-Caller pushes per-bar target values each frame; BarsWave applies internal
-attack/release smoothing and renders. The \`values\` array length determines
-the bar count. A typical pipeline:
+Caller provides a callback that returns per-bar targets for the current
+frame. BarsWave calls it **inside its own RAF loop** — the caller never
+needs its own \`requestAnimationFrame\`, and no React re-renders happen on
+the hot path (DOM heights are written directly via refs).
 
 \`\`\`tsx
-// each RAF tick, after the FFT publishes new bands
-const values = spreadBandsToBarValues(bands, 48, { seeds, t });
-return <BarsWave values={values} color="#16a34a" />;
+// getTargets identity must be stable — useCallback + scratch buffer
+const scratch = useRef(new Float32Array(48));
+const getTargets = useCallback((t: number) => {
+  return spreadBandsToBarValues(bandsRef.current, 48, { seeds, t }, scratch.current);
+}, [seeds]);
+
+return <BarsWave getTargets={getTargets} bars={48} color="#16a34a" />;
 \`\`\`
 
 ### Smoothing (attack / release)
@@ -46,7 +51,7 @@ smoothing (see **Jitter (smoothing off)** story to compare).
 Tune per instance if the default feel is off for your use case:
 
 \`\`\`tsx
-<BarsWave values={values} attack={0.6} release={0.05} />
+<BarsWave getTargets={getTargets} attack={0.6} release={0.05} />
 \`\`\`
 
 ### Visuals
@@ -79,7 +84,7 @@ const meta = {
     bars: {
       control: { type: 'range', min: 12, max: 64, step: 2 },
       description:
-        'Bar count (synth mode only). Ignored when `values` is provided — array length wins.',
+        'Bar count. Pre-allocates the scratch and ref arrays; driven mode returns arrays of this length from `getTargets`.',
     },
     height: {
       control: { type: 'range', min: 24, max: 120, step: 4 },
@@ -189,7 +194,9 @@ export const SolidColor: Story = {
 // --- Driven-mode stories -----------------------------------------------------
 // Simulates a live FFT pipeline by synthesizing fake bass/mid/treble bands
 // from sinusoids + noise, then routing through `spreadBandsToBarValues`.
-// The result is what BarsWave sees when wired to real audio.
+// The getTargets callback runs INSIDE BarsWave's RAF — nothing in this story
+// component ever causes a re-render after mount (just like the real
+// conversation feature).
 function DrivenStory({
   barCount = 48,
   height = 60,
@@ -203,16 +210,23 @@ function DrivenStory({
   attack?: number;
   release?: number;
 }) {
-  const [values, setValues] = useState<number[]>(() => new Array(barCount).fill(0));
+  // useState lazy init is the sanctioned place for impure calls. Seeds stay
+  // at the barCount they were initialized with — changing `bars` via the
+  // Controls slider doesn't regenerate them, which keeps the sparkle pattern
+  // stable across knob tweaks. Remount the story (reload) to reroll seeds.
   const [seeds] = useState(() =>
     Array.from({ length: barCount }, () => Math.random()),
   );
-
+  const scratch = useRef<Float32Array>(new Float32Array(barCount));
   useEffect(() => {
-    let raf: number;
-    const start = performance.now();
-    const loop = (now: number) => {
-      const t = (now - start) / 1000;
+    if (scratch.current.length === barCount) return;
+    scratch.current = new Float32Array(barCount);
+  }, [barCount]);
+
+  const getTargets = useCallback(
+    (t: number) => {
+      // t is seconds since BarsWave's RAF started — good enough for sparkle
+      // phase and sinusoid drive in a story context.
       // Fake audio bands — three oscillators at different frequencies plus
       // noise, to simulate the texture of real speech spectra.
       const bass = Math.max(
@@ -227,18 +241,20 @@ function DrivenStory({
         0,
         0.35 + 0.3 * Math.sin(t * 3.2 + 2) + (Math.random() - 0.5) * 0.25,
       );
-      setValues(
-        spreadBandsToBarValues({ bass, mid, treble }, barCount, { seeds, t }),
+      return spreadBandsToBarValues(
+        { bass, mid, treble },
+        barCount,
+        { seeds, t },
+        scratch.current,
       );
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [barCount, seeds]);
+    },
+    [barCount, seeds],
+  );
 
   return (
     <BarsWave
-      values={values}
+      getTargets={getTargets}
+      bars={barCount}
       height={height}
       color={color}
       attack={attack}
@@ -248,7 +264,7 @@ function DrivenStory({
 }
 
 export const Driven: Story = {
-  name: 'Driven (external values)',
+  name: 'Driven (getTargets callback)',
   render: (args) => (
     <DrivenStory
       barCount={args.bars ?? 48}
@@ -262,7 +278,7 @@ export const Driven: Story = {
     docs: {
       description: {
         story: `
-\`values\` mode with synthesized "FFT-like" data: three sinusoids at 1.3 / 2.1 /
+Driven mode with synthesized "FFT-like" data: three sinusoids at 1.3 / 2.1 /
 3.2 Hz plus per-frame noise, routed through \`spreadBandsToBarValues\`.
 Mirrors what the conversation feature does with real mic/agent audio.
 
