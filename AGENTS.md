@@ -74,8 +74,6 @@ Presentational components (`Ambient`, `Persona`, `Waveform` variants, `Transcrip
 
 Fonts come from `next/font/google` (Inter Tight, Instrument Serif, JetBrains Mono) wired in `src/app/layout.tsx`. The Voice Agent DS additionally loads Geist + Geist Mono on top, exposed as the `font-geist` / `font-geist-mono` utilities — used only by components from the `convo-ui` package and the `/design` catalog.
 
-The shader visualizer (`src/features/visualizer-lab/components/AgentShaderVisualizer/`) stays in the codebase but is only rendered at `/lab/visualizer`. It is not used by the main conversation flow.
-
 ### Voice Agent Design System
 
 `src/components/convo-ui/` is the single DS for this project, with its own token set (`--voice-a/b/c`, warm neutrals, semantic roles, `--font-geist`). Rendered in catalog form at `/design`. Future extraction to a standalone npm package or a shadcn registry stays open — not today's scope.
@@ -92,7 +90,6 @@ Rule: **new feature UI reaches for `convo-ui` primitives first**; the conversati
 | Toolkit core | `agora-agent-client-toolkit` | `AgoraVoiceAI`, `TurnStatus` enum, `TranscriptHelperItem` types |
 | UI components | `agora-agent-uikit` | Type exports (`AgentVisualizerState`, `IMessageListItem`) consumed by helpers in `src/features/conversation/lib/`. Its runtime components are no longer rendered in the main flow. |
 | View layer | `src/components/convo-ui/` + `src/features/conversation/components/` | Presentational primitives in `convo-ui`; business shell (LandingPage, ConversationShell, Waveform, Controls, MicPicker) in features. State machine in `features/conversation/lib/view-state.ts`. |
-| Visualizer (lab) | `src/features/visualizer-lab/components/AgentShaderVisualizer/` | WebGL shader visualizer — `/lab/visualizer` only |
 | Design system | `src/components/convo-ui/` | Voice Agent DS primitives (28 components + hooks) — rendered at `/design` |
 | Server SDK | `agora-agent-server-sdk` | Builder pattern — `AgoraClient` → `Agent` → `session.start()` |
 | Messaging | `agora-rtm` | RTM transport for transcripts |
@@ -115,8 +112,6 @@ Tailwind must scan uikit classes: `./node_modules/agora-agent-uikit/dist/**/*.{j
 | `src/features/conversation/lib/visualizer-state.ts` | `mapAgentVisualizerState` — RTC + agent signals → AgentVisualizerState |
 | `src/features/conversation/lib/agora-config.ts` | `DEFAULT_AGENT_UID` constant |
 | `src/features/conversation/server/invite-agent-config.ts` | `ADA_PROMPT`, `GREETING`, `AGENT_UID` — edit for agent persona |
-| `src/features/visualizer-lab/components/AgentShaderVisualizer/` | WebGL shader + FFT hook + palette reader |
-| `src/app/lab/visualizer/page.tsx` | Standalone playground for tuning the shader visualizer |
 | `src/app/design/page.tsx` | Voice Agent DS catalog — renders all 18 DS primitives + composition |
 | `src/components/convo-ui/` | Voice Agent DS primitives (canvas + DOM, Tailwind-first) — in-tree, rendered at `/design` |
 | `src/app/api/invite-agent/route.ts` | Starts AI agent — edit for VAD, model, voice (prompt lives in the config file) |
@@ -146,7 +141,7 @@ Tailwind must scan uikit classes: `./node_modules/agora-agent-uikit/dist/**/*.{j
 
 9. **Deprecated turn detection API** — use `turnDetection.config.start_of_speech` / `end_of_speech`. The old `type: 'agora_vad'` flat structure is deprecated.
 
-10. **Shader visualizer track stability** — `getMediaStreamTrack()` on `IRemoteAudioTrack` / `IMicrophoneAudioTrack` may return a new object per call. Memoize on the upstream Agora track reference when passing tracks to `useAudioFFT`.
+10. **Audio track stability for FFT** — `getMediaStreamTrack()` on `IRemoteAudioTrack` / `IMicrophoneAudioTrack` may return a new object per call. Memoize on the upstream Agora track reference when passing tracks to `useAudioFFT`.
 
 11. **Transcript `turn_id` uniqueness** — `turn_id` is scoped per speaker. Use a composite React key (`${uid}-${turn_id}`) when rendering transcript entries, otherwise user + agent turns with the same index collide.
 

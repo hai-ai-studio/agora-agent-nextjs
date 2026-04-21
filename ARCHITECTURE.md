@@ -22,8 +22,6 @@ src/
     page.tsx                           — root page, renders <LandingPage />
     layout.tsx                         — minimal shell with next/font bindings
     globals.css                        — design tokens + body base only
-    lab/
-      visualizer/page.tsx              — standalone playground for AgentShaderVisualizer
     design/
       page.tsx                         — /design Voice Agent DS catalog (dev reference, URL-only)
     api/
@@ -45,7 +43,7 @@ src/
         useAgoraVoiceAI.ts             — toolkit init + transcript/agent state + RTM error stream
         useTokenRefresh.ts             — renews RTC + RTM tokens on token-privilege-will-expire
         useAgoraSession.ts             — token fetch + agent invite + RTM lifecycle
-        useAudioFFT.ts                 — MediaStreamTrack → bass/mid/treble band averages (shared by Waveform + lab shader)
+        useAudioFFT.ts                 — MediaStreamTrack → bass/mid/treble band averages (powers Waveform)
       lib/
         view-state.ts                  — ViewState enum + mapToViewState + ADA_AGENT_NAME + VIEW_HINT copy
         transcript.ts                  — pure helpers: normalizeTranscript, getMessageList,
@@ -57,10 +55,6 @@ src/
         invite-agent-config.ts         — ADA_PROMPT, GREETING, AGENT_UID (imported by invite-agent route)
       types.ts                         — AgoraTokenData, ClientStartRequest, AgentResponse,
                                          ConversationComponentProps, StopConversationRequest
-    visualizer-lab/
-      components/
-        AgentShaderVisualizer/         — WebGL shader visualizer used at /lab/visualizer only
-          index.tsx · gl.ts · shader.ts
 
   components/
     ErrorBoundary.tsx                  — last-resort recovery UI for the in-call tree
@@ -233,10 +227,6 @@ Core real-time component. Must be inside `AgoraRTCProvider`.
 - `Persona`, `Transcript`, `VoiceLangMenu`, `Ambient` (and other presentational primitives) come from `src/components/convo-ui/`. Business-adapter components (`Waveform`, `Controls`, `MicPicker`) live in `src/features/conversation/components/`. No uikit runtime component is rendered.
 - State mapping: `mapToViewState(visualizerState, agentState, isMuted)` from `lib/view-state.ts` collapses `AgentVisualizerState` + agent state + local mute into the 8-state view enum (`connecting` / `preparing` / `idle` / `listening` / `thinking` / `speaking` / `muted` / `error`).
 - Transcript data comes from `messageList` + `currentInProgressMessage` mapped into `{ speaker, text, key }` where `key = ${uid}-${turn_id}` (turn_id is per-speaker, not globally unique).
-
-**Shader visualizer (lab-only):**
-
-- `AgentShaderVisualizer` (`src/features/visualizer-lab/components/AgentShaderVisualizer/`) is kept in the codebase and rendered at `/lab/visualizer`. Not used in the main conversation flow. Useful as a reference for anyone tapping `MediaStreamTrack` for custom audio-reactive UI.
 
 ---
 

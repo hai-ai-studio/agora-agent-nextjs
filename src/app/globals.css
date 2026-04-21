@@ -67,7 +67,7 @@
   --color-info:      var(--info);
 
   /* shadcn-compat aliases for legacy components (ui/button, LoadingSkeleton,
-     ErrorBoundary, /lab/visualizer). Point at the same semantic roles. */
+     ErrorBoundary). Point at the same semantic roles. */
   --color-card:              var(--surface);
   --color-card-foreground:   var(--surface-foreground);
   --color-popover:           var(--surface-elevated);

@@ -268,18 +268,11 @@ The local adapter is intentional. The current repo hit a browser runtime issue w
 
 ## Rendering with `ConvoTextStream`
 
-Drop `ConvoTextStream` into your JSX. It handles smart scrolling, auto-open on first message, mobile responsiveness, and streaming indicators. Alongside it, this quickstart renders `AgentShaderVisualizer` (the default) or the uikit `AgentVisualizer` (if `NEXT_PUBLIC_SHADER_VIZ=0`):
+Drop `ConvoTextStream` into your JSX. It handles smart scrolling, auto-open on first message, mobile responsiveness, and streaming indicators:
 
 ```typescript
 import { ConvoTextStream } from 'agora-agent-uikit';
-import { AgentShaderVisualizer } from '@/features/visualizer-lab/components/AgentShaderVisualizer';
 
-<AgentShaderVisualizer
-  state={visualizerState}
-  size="lg"
-  agentAudioTrack={agentMediaTrack}
-  userAudioTrack={userMediaTrack}
-/>
 <ConvoTextStream
   messageList={messageList}
   currentInProgressMessage={currentInProgressMessage}
