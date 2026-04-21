@@ -329,7 +329,7 @@ export default function ConversationShell({
           <ConnectionIndicator status={connectionStatus} secondary={false} />
           <span className="text-border">·</span>
           <a
-            href="https://github.com/AgoraIO-Conversational-AI/agent-quickstart-nextjs"
+            href="https://github.com/hai-ai-studio/agora-agent-nextjs"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center text-muted-foreground transition-colors duration-150 hover:text-foreground"

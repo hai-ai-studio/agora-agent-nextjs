@@ -15,8 +15,8 @@ Thank you for your interest in contributing! This document provides guidelines f
 1. Fork and clone the repository:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/agent-quickstart-nextjs.git
-cd agent-quickstart-nextjs
+git clone https://github.com/YOUR_USERNAME/agora-agent-nextjs.git
+cd agora-agent-nextjs
 ```
 
 2. Install dependencies:
