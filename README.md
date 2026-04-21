@@ -4,9 +4,9 @@
 >
 > The Next.js entry in Agora's official Conversational AI demo family. On top of the baseline demo, this quickstart ships substantial **design & UX polish**, runs **out of the box** with just two env vars, and bundles a reusable **voice UI component library** (`convo-ui`) you can extend into your own product.
 
-<p align="center">
-  <img src=".github/assets/Conversation-Ai-Client.gif" alt="Conversational AI demo" width="720" />
-</p>
+
+https://github.com/user-attachments/assets/fdc89fd6-54e3-4e12-a875-cfcee493ae71
+
 
 ## Highlights
 
