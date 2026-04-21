@@ -72,3 +72,7 @@ Full directory map, data flow, and per-route contracts live in [ARCHITECTURE.md]
 - [docs/guides/GUIDE.md](./docs/guides/GUIDE.md) — step-by-step build guide
 - [docs/guides/TEXT_STREAMING_GUIDE.md](./docs/guides/TEXT_STREAMING_GUIDE.md) — transcript / text-streaming deep-dive
 - [docs/decisions/](./docs/decisions/) — ADRs behind structural choices
+
+## Acknowledgements
+
+Built on top of [AgoraIO-Conversational-AI/agent-quickstart-nextjs](https://github.com/AgoraIO-Conversational-AI/agent-quickstart-nextjs) — thanks to the upstream team for the baseline demo this quickstart extends.

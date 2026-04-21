@@ -74,3 +74,7 @@ BYOK 示例（Deepgram STT、ElevenLabs TTS、自建 LLM）以注释形式保留
 - [docs/guides/GUIDE.md](./docs/guides/GUIDE.md) — 手把手构建指南
 - [docs/guides/TEXT_STREAMING_GUIDE.md](./docs/guides/TEXT_STREAMING_GUIDE.md) — 转录 / 文本流深入
 - [docs/decisions/](./docs/decisions/) — 结构决策背后的 ADR
+
+## 致谢
+
+本项目基于 [AgoraIO-Conversational-AI/agent-quickstart-nextjs](https://github.com/AgoraIO-Conversational-AI/agent-quickstart-nextjs) 构建，感谢上游团队提供的基础 demo。
