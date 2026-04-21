@@ -17,6 +17,8 @@ https://github.com/user-attachments/assets/fdc89fd6-54e3-4e12-a875-cfcee493ae71
 - **Single view-state machine** — RTC connection, RTM login, mic mute, and agent state collapse into one enum, so the UI never flickers mid-call or tells you to "start talking" before the agent has greeted you.
 - **Two env vars and you're running** — Agora-managed STT + LLM + TTS kick in by default, so you can hear the first "hello" without signing up for any third-party vendor.
 
+https://github.com/user-attachments/assets/2465cf8e-fd42-41f4-9761-2a1875c1c848
+
 ## Quickstart
 
 ```bash
