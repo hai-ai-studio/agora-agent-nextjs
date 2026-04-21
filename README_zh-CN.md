@@ -6,9 +6,9 @@
 >
 > Agora 官方 Conversational AI demo 家族中的 Next.js 版本。相较基础 demo，这个 quickstart 在 **UX 细节与视觉设计** 上额外投入了打磨，两个环境变量即可**开箱运行**，同时附带一个可独立复用的**语音 UI 组件库**（`convo-ui`），方便基于它扩展到你自己的产品。
 
-<p align="center">
-  <img src=".github/assets/Conversation-Ai-Client.gif" alt="Conversational AI demo" width="720" />
-</p>
+
+https://github.com/user-attachments/assets/fdc89fd6-54e3-4e12-a875-cfcee493ae71
+
 
 ## 亮点
 
@@ -18,6 +18,8 @@
 - **`convo-ui` 组件库** — 28 个组件打包为独立的内置库。`/design` 页面是可视目录，或者 `pnpm storybook` 独立调试，自带亮暗主题切换和 a11y 检测。
 - **单一视图状态机** — 把 RTC 连接、RTM 登录、麦克风静音、Agent 状态合并成一个枚举，确保通话中 UI 不会闪烁，也不会在 Agent 还没打招呼时就提示"开始说话"。
 - **两个环境变量就能跑** — 默认走 Agora 托管的 STT / LLM / TTS，不用注册任何第三方账号就能听见第一声 hello。
+
+https://github.com/user-attachments/assets/2465cf8e-fd42-41f4-9761-2a1875c1c848
 
 ## 快速开始
 
