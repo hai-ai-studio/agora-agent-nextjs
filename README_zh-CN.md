@@ -1,5 +1,7 @@
 # Agora Conversational AI Next.js Quickstart
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE) [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs)](https://nextjs.org) [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org) [![Stars](https://img.shields.io/github/stars/hai-ai-studio/agora-agent-nextjs?style=social)](https://github.com/hai-ai-studio/agora-agent-nextjs/stargazers)
+
 > [English](./README.md) · **简体中文**
 >
 > Agora 官方 Conversational AI demo 家族中的 Next.js 版本。相较基础 demo，这个 quickstart 在 **UX 细节与视觉设计** 上额外投入了打磨，两个环境变量即可**开箱运行**，同时附带一个可独立复用的**语音 UI 组件库**（`convo-ui`），方便基于它扩展到你自己的产品。
@@ -78,3 +80,13 @@ BYOK 示例（Deepgram STT、ElevenLabs TTS、自建 LLM）以注释形式保留
 ## 致谢
 
 本项目基于 [AgoraIO-Conversational-AI/agent-quickstart-nextjs](https://github.com/AgoraIO-Conversational-AI/agent-quickstart-nextjs) 构建，感谢上游团队提供的基础 demo。
+
+## Star History
+
+<a href="https://www.star-history.com/#hai-ai-studio/agora-agent-nextjs&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=hai-ai-studio/agora-agent-nextjs&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=hai-ai-studio/agora-agent-nextjs&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=hai-ai-studio/agora-agent-nextjs&type=Date" />
+  </picture>
+</a>

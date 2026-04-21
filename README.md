@@ -1,5 +1,7 @@
 # Agora Conversational AI Next.js Quickstart
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE) [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs)](https://nextjs.org) [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org) [![Stars](https://img.shields.io/github/stars/hai-ai-studio/agora-agent-nextjs?style=social)](https://github.com/hai-ai-studio/agora-agent-nextjs/stargazers)
+
 > **English** · [简体中文](./README_zh-CN.md)
 >
 > The Next.js entry in Agora's official Conversational AI demo family. On top of the baseline demo, this quickstart ships substantial **design & UX polish**, runs **out of the box** with just two env vars, and bundles a reusable **voice UI component library** (`convo-ui`) you can extend into your own product.
@@ -78,3 +80,13 @@ Full directory map, data flow, and per-route contracts live in [ARCHITECTURE.md]
 ## Acknowledgements
 
 Built on top of [AgoraIO-Conversational-AI/agent-quickstart-nextjs](https://github.com/AgoraIO-Conversational-AI/agent-quickstart-nextjs) — thanks to the upstream team for the baseline demo this quickstart extends.
+
+## Star History
+
+<a href="https://www.star-history.com/#hai-ai-studio/agora-agent-nextjs&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=hai-ai-studio/agora-agent-nextjs&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=hai-ai-studio/agora-agent-nextjs&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=hai-ai-studio/agora-agent-nextjs&type=Date" />
+  </picture>
+</a>
