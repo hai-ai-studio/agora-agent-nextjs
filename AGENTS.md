@@ -3,6 +3,8 @@
 > Operational rules for AI agents (Claude Code, Cursor, any other) working in this repo.
 > For the top-level map — directory layout, data flow, API routes, components — read [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 > For the "why" behind structural decisions, read [`docs/decisions/`](./docs/decisions/).
+>
+> **Recommended skill pack:** install [`AgoraIO/skills`](https://github.com/AgoraIO/skills) for official Agora CLI commands, Conversational AI / RTC / RTM references, token-generation patterns, and real-time audio constraints. Claude Code: `/plugin marketplace add AgoraIO/skills` then `/plugin install agora@agora-skills`. Do **not** invent Agora CLI subcommands — consult the skill pack first.
 
 ## Project
 

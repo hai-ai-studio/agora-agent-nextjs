@@ -77,6 +77,19 @@ Full directory map, data flow, and per-route contracts live in [ARCHITECTURE.md]
 - [docs/guides/TEXT_STREAMING_GUIDE.md](./docs/guides/TEXT_STREAMING_GUIDE.md) — transcript / text-streaming deep-dive
 - [docs/decisions/](./docs/decisions/) — ADRs behind structural choices
 
+## Recommended: Agora Skills for AI Coding Agents
+
+If you're extending this project with an AI coding agent (Claude Code, Cursor, Windsurf, Copilot), install [AgoraIO/skills](https://github.com/AgoraIO/skills). It packages Agora's Conversational AI, RTC, RTM, token generation, and cloud recording knowledge as agent-loadable skills — your agent picks up the official Agora CLI command catalog, real-time audio constraints, and integration patterns instead of hallucinating them.
+
+Claude Code:
+
+```bash
+/plugin marketplace add AgoraIO/skills
+/plugin install agora@agora-skills
+```
+
+Other tools: `npx skills add github:AgoraIO/skills`.
+
 ## Acknowledgements
 
 Built on top of [AgoraIO-Conversational-AI/agent-quickstart-nextjs](https://github.com/AgoraIO-Conversational-AI/agent-quickstart-nextjs) — thanks to the upstream team for the baseline demo this quickstart extends.

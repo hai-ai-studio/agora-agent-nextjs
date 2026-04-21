@@ -77,6 +77,19 @@ BYOK 示例（Deepgram STT、ElevenLabs TTS、自建 LLM）以注释形式保留
 - [docs/guides/TEXT_STREAMING_GUIDE.md](./docs/guides/TEXT_STREAMING_GUIDE.md) — 转录 / 文本流深入
 - [docs/decisions/](./docs/decisions/) — 结构决策背后的 ADR
 
+## 推荐：Agora Skills (面向 AI 编程助手)
+
+如果你用 AI 编程助手 (Claude Code、Cursor、Windsurf、Copilot) 基于 Agora 技术栈扩展这个项目，建议安装 [AgoraIO/skills](https://github.com/AgoraIO/skills)。它把 Agora Conversational AI、RTC、RTM、Token 生成、Cloud Recording 等知识打包成 Agent 可加载的 Skill —— 让你的 Agent 掌握官方 Agora CLI 命令集、实时音频约束和集成范式，而不是凭空猜测。
+
+Claude Code:
+
+```bash
+/plugin marketplace add AgoraIO/skills
+/plugin install agora@agora-skills
+```
+
+其他工具可用 `npx skills add github:AgoraIO/skills`。
+
 ## 致谢
 
 本项目基于 [AgoraIO-Conversational-AI/agent-quickstart-nextjs](https://github.com/AgoraIO-Conversational-AI/agent-quickstart-nextjs) 构建，感谢上游团队提供的基础 demo。
