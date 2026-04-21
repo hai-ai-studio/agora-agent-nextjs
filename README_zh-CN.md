@@ -20,8 +20,8 @@
 ## 快速开始
 
 ```bash
-git clone https://github.com/AgoraIO-Conversational-AI/agent-quickstart-nextjs.git
-cd agent-quickstart-nextjs
+git clone https://github.com/hai-ai-studio/agora-agent-nextjs.git
+cd agora-agent-nextjs
 pnpm install
 cp env.local.example .env.local    # 然后填入两个 Agora 变量
 pnpm dev
@@ -63,7 +63,7 @@ BYOK 示例（Deepgram STT、ElevenLabs TTS、自建 LLM）以注释形式保留
 
 ## 部署
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FAgoraIO-Conversational-AI%2Fagent-quickstart-nextjs&project-name=agent-quickstart-nextjs&repository-name=agent-quickstart-nextjs&env=NEXT_PUBLIC_AGORA_APP_ID,NEXT_AGORA_APP_CERTIFICATE&envDescription=Agora%20credentials%20needed%20to%20run%20the%20app&envLink=https%3A%2F%2Fgithub.com%2FAgoraIO-Conversational-AI%2Fagent-quickstart-nextjs%23run-it&demo-title=Agora%20Conversational%20AI%20Next.js%20Quickstart&demo-description=Official%20Next.js%20quickstart%20for%20building%20browser-based%20voice%20AI%20with%20Agora&demo-image=https%3A%2F%2Fraw.githubusercontent.com%2FAgoraIO-Conversational-AI%2Fagent-quickstart-nextjs%2Fmain%2F.github%2Fassets%2FConversation-Ai-Client.gif)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fhai-ai-studio%2Fagora-agent-nextjs&project-name=agora-agent-nextjs&repository-name=agora-agent-nextjs&env=NEXT_PUBLIC_AGORA_APP_ID,NEXT_AGORA_APP_CERTIFICATE&envDescription=Agora%20credentials%20needed%20to%20run%20the%20app&envLink=https%3A%2F%2Fgithub.com%2Fhai-ai-studio%2Fagora-agent-nextjs%23%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B&demo-title=Agora%20Conversational%20AI%20Next.js%20Quickstart&demo-description=Next.js%20quickstart%20for%20building%20browser-based%20voice%20AI%20with%20Agora&demo-image=https%3A%2F%2Fraw.githubusercontent.com%2Fhai-ai-studio%2Fagora-agent-nextjs%2Fmain%2F.github%2Fassets%2FConversation-Ai-Client.gif)
 
 点击上方 Vercel 按钮一键部署，或将仓库推送到任何支持 Next.js 16 的平台，部署时只需填入两个 Agora 环境变量。
 
