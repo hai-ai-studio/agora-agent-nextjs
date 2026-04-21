@@ -1,7 +1,17 @@
 {
-  "name": "convoai-quickstart-web-nextjs",
+  "name": "agora-agent-nextjs",
   "version": "0.1.0",
   "description": "Next.js quickstart for building conversational AI applications with Agora's Conversational AI Engine",
+  "license": "MIT",
+  "author": "hai-ai-studio",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hai-ai-studio/agora-agent-nextjs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hai-ai-studio/agora-agent-nextjs/issues"
+  },
+  "homepage": "https://github.com/hai-ai-studio/agora-agent-nextjs#readme",
   "private": true,
   "engines": {
     "node": ">=22"
